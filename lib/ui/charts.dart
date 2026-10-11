@@ -27,7 +27,9 @@ class LevelBar extends StatelessWidget {
         height: height,
         child: parts.isEmpty
             ? ColoredBox(color: c.surfaceContainerHighest)
+            // Stretch: a bare ColoredBox in a Row is otherwise given no height.
             : Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final (color, seconds) in parts)
                     Expanded(

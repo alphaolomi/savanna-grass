@@ -424,7 +424,7 @@ class _AppList extends StatelessWidget {
                   child: Text(
                     [
                       Levels.label(a.productivity),
-                      if (a.category != null && a.category != 'uncategorized') a.category!,
+                      if (a.category != null && a.category != 'uncategorized') Levels.category(a.category!),
                       if (a.sessions > 0) '${a.sessions} session${a.sessions == 1 ? '' : 's'}',
                     ].join(' · '),
                     style: muted,
@@ -467,12 +467,18 @@ class _CategoryList extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(c.name, style: t.textTheme.titleSmall)),
+                    Expanded(child: Text(Levels.category(c.name), style: t.textTheme.titleSmall)),
                     Text(formatDuration(c.seconds), style: t.textTheme.titleSmall),
                   ],
                 ),
                 const SizedBox(height: 4),
-                LevelBar(secondsByLevel: c.secondsByLevel, height: 6),
+                LevelBar(
+                  secondsByLevel: c.secondsByLevel,
+                  // Whatever the levels do not account for is uncategorized.
+                  uncategorizedSeconds: (c.seconds - c.secondsByLevel.values.fold(0, (a, b) => a + b))
+                      .clamp(0, c.seconds).toInt(),
+                  height: 6,
+                ),
               ],
             ),
           ),

@@ -22,6 +22,13 @@ abstract final class Levels {
     0 => c.outline,
     -1 => c.secondary,
     -2 => c.error,
-    _ => c.outlineVariant,
+    // Muted but visible on both themes; outlineVariant all but vanishes on
+    // a dark card.
+    _ => c.onSurfaceVariant.withValues(alpha: 0.4),
   };
+
+  /// Category names as SavannaTime stores them, for display: `development`
+  /// → `Development`.
+  static String category(String name) =>
+      name.isEmpty ? 'Uncategorized' : name[0].toUpperCase() + name.substring(1);
 }

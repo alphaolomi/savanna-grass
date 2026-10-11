@@ -5,6 +5,7 @@ import 'package:savanna_grass/ai/gemma_runtime.dart';
 import 'package:savanna_grass/api/savanna_api.dart';
 import 'package:savanna_grass/app_state.dart';
 import 'package:savanna_grass/storage.dart';
+import 'package:savanna_grass/ui/charts.dart';
 import 'package:savanna_grass/ui/day_screen.dart';
 import 'package:savanna_grass/ui/theme.dart';
 import 'package:savanna_grass/ui/week_screen.dart';
@@ -57,7 +58,7 @@ void main() {
     expect(find.text('15 min to go'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.text('Code'), 300);
-    expect(find.textContaining('development · 9 sessions'), findsOneWidget);
+    expect(find.textContaining('Development · 9 sessions'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.text('Sky Survey'), 300);
     await tester.tap(find.text('Sky Survey'));
@@ -81,5 +82,22 @@ void main() {
     await tester.pump();
     expect(find.text('3h 00m on screens × 10 min/h'), findsOneWidget);
     state.dispose();
+  });
+
+  testWidgets('every level bar segment is drawn at full height', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: savannaTheme(Brightness.dark),
+      home: const Scaffold(
+        body: SizedBox(
+          width: 300,
+          child: LevelBar(secondsByLevel: {2: 600, -1: 300}, uncategorizedSeconds: 100, height: 14),
+        ),
+      ),
+    ));
+    final boxes = find.descendant(of: find.byType(LevelBar), matching: find.byType(ColoredBox));
+    expect(boxes, findsNWidgets(3));
+    for (final e in boxes.evaluate()) {
+      expect(tester.getSize(find.byWidget(e.widget)).height, 14);
+    }
   });
 }
