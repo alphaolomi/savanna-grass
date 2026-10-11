@@ -1,0 +1,9 @@
+[
+  { "id": "01-intro", "text": "I build SavannaTime, a screen-time tracker. It is very good at telling me I spent five hours in VS Code. It has never once made me stand up." },
+  { "id": "02-debt", "text": "Savanna Grass reads my day from SavannaTime, and turns it into grass debt. Ten minutes outside for every hour on screens. Distracting time counts one and a half times." },
+  { "id": "03-gemma", "text": "Then Gemma 3, one B, an open-weight model running right here on the device, writes me a quest from the shape of my day." },
+  { "id": "04-offline", "text": "No signal? It still works. My screen time never leaves the device for the AI. No API key, no vendor, and no bill per walk." },
+  { "id": "05-break", "text": "Tap go, and the app gets boring on purpose. Phone in pocket. Eyes up." },
+  { "id": "06-logged", "text": "When I'm back, the break is logged to SavannaTime, next to my screen time, and the debt goes down." },
+  { "id": "07-outro", "text": "Savanna Grass. Open source, on-device, and built to get you outside." }
+]

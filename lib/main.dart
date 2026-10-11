@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import 'ai/gemma_runtime.dart';
@@ -12,6 +14,9 @@ import 'ui/theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Flutter web paints to a canvas; the semantics tree is what screen readers
+  // (and the demo recorder) see. Off by default on web, so turn it on.
+  if (kIsWeb) SemanticsBinding.instance.ensureSemantics();
   await FlutterGemma.initialize(
     huggingFaceToken: Config.hfToken.isEmpty ? null : Config.hfToken,
   );

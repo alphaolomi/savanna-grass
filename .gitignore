@@ -43,3 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Secrets and demo-video build output
+.hf_token
+.env*
+demo/out/
+demo/node_modules/
