@@ -5,7 +5,7 @@ import '../config.dart';
 import '../domain/outdoor_log.dart';
 import '../domain/quest.dart';
 import '../persona.dart';
-import 'break_screen.dart';
+import 'reminders_sheet.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _WeekCard(week: state.week),
                   const SizedBox(height: 12),
-                  _TodayCard(breaks: state.todayBreaks),
+                  _TodayCard(breaks: state.todayBreaks, today: state.today),
                 ],
               ),
             ),
@@ -102,6 +102,7 @@ class _Header extends StatelessWidget {
           onSelected: (v) {
             if (v == 'out') state.signOut();
             if (v == 'refresh') state.refresh();
+            if (v == 'reminders') showRemindersSheet(context, state);
             if (v == 'about') {
               showLicensePage(
                 context: context,
@@ -114,6 +115,7 @@ class _Header extends StatelessWidget {
           itemBuilder: (_) => [
             PopupMenuItem(enabled: false, child: Text(state.email ?? '')),
             const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
+            if (state.reminders.supported) const PopupMenuItem(value: 'reminders', child: Text('Reminders')),
             const PopupMenuItem(value: 'about', child: Text('About & licences')),
             const PopupMenuItem(value: 'out', child: Text('Sign out')),
           ],
@@ -431,9 +433,7 @@ class _QuestCard extends StatelessWidget {
                     child: FilledButton.icon(
                       icon: const Icon(Icons.park),
                       label: const Text("I'm going outside"),
-                      onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => BreakScreen(state: state, quest: quest),
-                      )),
+                      onPressed: () => state.startBreak(quest),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -592,8 +592,11 @@ class _WeekCard extends StatelessWidget {
 }
 
 class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.breaks});
+  const _TodayCard({required this.breaks, required this.today});
   final List<LoggedBreak> breaks;
+
+  /// Local midnight: a break that began before it shows only today's share.
+  final DateTime today;
 
   @override
   Widget build(BuildContext context) {
@@ -632,7 +635,8 @@ class _TodayCard extends StatelessWidget {
                         children: [
                           Text(b.title, style: t.textTheme.titleSmall),
                           Text(
-                            '${hm(b.start.toLocal())} · ${(b.seconds / 60).round()} min'
+                            '${b.start.isBefore(today) ? 'Since midnight' : hm(b.start.toLocal())}'
+                            ' · ${(b.secondsOn(today) / 60).round()} min'
                             '${b.pending ? ' · waiting to sync' : ' · in SavannaTime'}',
                             style: muted,
                           ),

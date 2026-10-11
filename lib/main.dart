@@ -7,10 +7,13 @@ import 'ai/gemma_runtime.dart';
 import 'api/savanna_api.dart';
 import 'app_state.dart';
 import 'config.dart';
+import 'reminders.dart';
 import 'storage.dart';
+import 'ui/break_screen.dart';
 import 'ui/home_screen.dart';
 import 'ui/login_screen.dart';
 import 'ui/theme.dart';
+import 'ui/widgets.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,8 +36,10 @@ Future<void> main() async {
     api: SavannaApi(baseUrl: Config.apiUrl),
     storage: Storage(),
     gemma: GemmaRuntime(),
+    reminders: kIsWeb ? const NoReminders() : DeviceReminders(),
   );
   runApp(SavannaGrassApp(state: state));
+  state.attachLifecycle();
   await state.boot();
 }
 
@@ -53,11 +58,23 @@ class SavannaGrassApp extends StatelessWidget {
         theme: savannaTheme(Brightness.light),
         darkTheme: savannaTheme(Brightness.dark),
         themeMode: state.themeMode,
-        home: switch (state.auth) {
-          AuthStatus.unknown => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          AuthStatus.signedOut => LoginScreen(state: state),
-          AuthStatus.signedIn => HomeScreen(state: state),
-        },
+        scaffoldMessengerKey: rootMessengerKey,
+        // A running break *is* the app until it ends: it comes back after a
+        // restart, and Android's back button just sends it to the background.
+        home: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: switch (state.auth) {
+            AuthStatus.unknown => const Scaffold(
+                key: ValueKey('boot'),
+                body: Center(child: CircularProgressIndicator()),
+              ),
+            AuthStatus.signedOut => LoginScreen(key: const ValueKey('login'), state: state),
+            AuthStatus.signedIn => switch (state.activeBreak) {
+                final b? => BreakScreen(key: ValueKey(b.id), state: state),
+                null => HomeScreen(key: const ValueKey('home'), state: state),
+              },
+          },
+        ),
       ),
     );
   }

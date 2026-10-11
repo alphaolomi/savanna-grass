@@ -3,26 +3,29 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
-import '../domain/quest.dart';
+import '../domain/active_break.dart';
 import '../persona.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
 /// The break itself. Calm on purpose: one ring, one instruction — the phone's
 /// job now is to go back in a pocket.
+///
+/// Everything it shows comes from [AppState.activeBreak], which is saved on
+/// the phone, so the timer is still right after Android kills the app, the
+/// phone reboots, or the person comes back tomorrow.
 class BreakScreen extends StatefulWidget {
-  const BreakScreen({super.key, required this.state, required this.quest});
+  const BreakScreen({super.key, required this.state});
 
   final AppState state;
-  final Quest quest;
 
   @override
   State<BreakScreen> createState() => _BreakScreenState();
 }
 
 class _BreakScreenState extends State<BreakScreen> {
-  final _start = DateTime.now();
-  final _note = TextEditingController();
+  late final ActiveBreak _break = widget.state.activeBreak!;
+  late final _note = TextEditingController(text: _break.note);
   late final Timer _tick;
   bool _saving = false;
 
@@ -39,32 +42,45 @@ class _BreakScreenState extends State<BreakScreen> {
     super.dispose();
   }
 
-  Duration get _elapsed => DateTime.now().difference(_start);
-  Duration get _target => Duration(minutes: widget.quest.minutes);
+  Duration get _elapsed {
+    final e = widget.state.now.difference(_break.start);
+    return e.isNegative ? Duration.zero : e;
+  }
+
+  Duration get _target => Duration(minutes: _break.minutes);
 
   Future<void> _finish() async {
     setState(() => _saving = true);
-    final end = DateTime.now();
-    // Under a minute is a mis-tap, not time outside, so it is not logged.
-    if (end.difference(_start).inSeconds < 60) {
-      Navigator.of(context).pop();
-      return;
-    }
-    final minutes = end.difference(_start).inMinutes;
-    final synced = await widget.state.finishBreak(
-      title: widget.quest.title,
-      start: _start,
-      end: end,
-      note: _note.text,
-    );
-    if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    Navigator.of(context).pop();
-    messenger.showSnackBar(SnackBar(
-      content: Text(synced
-          ? 'Logged to SavannaTime: $minutes min outside. ${Twiga.name} is proud of you.'
-          : 'Saved on this device — it counts already and will sync when you are online.'),
+    final minutes = _break.endAt(widget.state.now).difference(_break.start).inMinutes;
+    final outcome = await widget.state.finishBreak();
+    rootMessengerKey.currentState?.showSnackBar(SnackBar(
+      content: Text(switch (outcome) {
+        BreakOutcome.tooShort => 'Under a minute — not logged.',
+        BreakOutcome.synced => 'Logged to SavannaTime: $minutes min outside. ${Twiga.name} is proud of you.',
+        BreakOutcome.queued => 'Saved on this device — it counts already and will sync when you are online.',
+      }),
     ));
+    if (mounted) setState(() => _saving = false);
+  }
+
+  /// Throwing away real time outside takes a second tap.
+  Future<void> _cancel() async {
+    if (_elapsed >= ActiveBreak.minLength) {
+      final minutes = _elapsed.inMinutes;
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard this break?'),
+          content: Text('$minutes min outside will not be logged.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep timing')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Discard')),
+          ],
+        ),
+      );
+      if (discard != true) return;
+    }
+    await widget.state.cancelBreak();
   }
 
   @override
@@ -77,6 +93,7 @@ class _BreakScreenState extends State<BreakScreen> {
     final mm = shown.inMinutes.toString().padLeft(2, '0');
     final ss = (shown.inSeconds % 60).toString().padLeft(2, '0');
     final progress = (_elapsed.inSeconds / _target.inSeconds).clamp(0.0, 1.0);
+    final overCap = _elapsed > ActiveBreak.maxLength;
 
     return Scaffold(
       backgroundColor: s.heroBottom,
@@ -98,16 +115,16 @@ class _BreakScreenState extends State<BreakScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
-                      tooltip: 'Back',
-                      onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                      tooltip: 'Cancel break',
+                      onPressed: _saving ? null : _cancel,
                       icon: Icon(Icons.close, color: s.onHero),
                     ),
                   ),
-                  Text(widget.quest.title,
+                  Text(_break.title,
                       textAlign: TextAlign.center,
                       style: t.textTheme.headlineSmall?.copyWith(color: s.onHero)),
                   const SizedBox(height: 8),
-                  Text(widget.quest.steps,
+                  Text(_break.steps,
                       textAlign: TextAlign.center,
                       style: t.textTheme.bodyLarge?.copyWith(color: s.onHeroMuted)),
                   const SizedBox(height: 28),
@@ -137,7 +154,12 @@ class _BreakScreenState extends State<BreakScreen> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    done ? 'Quest time reached. Stay out as long as you like.' : 'Phone in pocket. Eyes up.',
+                    overCap
+                        ? 'Over ${ActiveBreak.maxLength.inHours} hours — this break will be logged as '
+                            '${ActiveBreak.maxLength.inHours} h, the most one break counts for.'
+                        : done
+                            ? 'Quest time reached. Stay out as long as you like.'
+                            : 'Phone in pocket. Eyes up. The timer keeps going with the app closed.',
                     textAlign: TextAlign.center,
                     style: t.textTheme.titleMedium?.copyWith(color: s.onHero),
                   ),
@@ -145,6 +167,7 @@ class _BreakScreenState extends State<BreakScreen> {
                   TextField(
                     controller: _note,
                     maxLength: 140,
+                    onChanged: widget.state.updateBreakNote,
                     style: TextStyle(color: s.onHero),
                     cursorColor: s.onHero,
                     decoration: InputDecoration(
@@ -177,7 +200,7 @@ class _BreakScreenState extends State<BreakScreen> {
                   const SizedBox(height: 4),
                   TextButton(
                     style: TextButton.styleFrom(foregroundColor: s.onHeroMuted),
-                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                    onPressed: _saving ? null : _cancel,
                     child: const Text('Cancel — not logged'),
                   ),
                 ],
