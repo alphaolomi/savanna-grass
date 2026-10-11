@@ -52,7 +52,7 @@ not parse, a classic quest is shown instead. You always get sent outside.
 
 ## Run it
 
-Requires Flutter 3.24+ and an Android (API 24+) or iOS device. A physical phone is strongly
+Requires Flutter 3.38+ (for `flutter_local_notifications`) and an Android (API 24+) or iOS device. A physical phone is strongly
 recommended — emulators rarely have a GPU delegate.
 
 1. Gemma's weights are gated: sign in to Hugging Face, accept the licence on
@@ -87,7 +87,8 @@ flutter build web --release --dart-define=HF_TOKEN=hf_xxx
 | `DEBUG_QUESTS` | `false` | Print the model's raw answers to the console. |
 
 ```bash
-flutter test      # debt formula, week/streak, prompt, parser, fallbacks, API client
+flutter test      # debt formula, week/streak, prompt, parser, fallbacks, API client,
+                  # midnight rollover, restarts mid-break, sync races, reminder plans
 flutter analyze
 ```
 
@@ -98,13 +99,17 @@ lib/
   domain/grass_debt.dart   deterministic debt formula (pure, tested)
   domain/quest.dart        prompt builder, tolerant line parser, template fallbacks
   domain/outdoor_log.dart  the 7-day chart and streak (pure, tested)
+  domain/local_day.dart    local-midnight days; a break across midnight pays both
+  domain/active_break.dart the running break, saved so it survives Android killing the app
+  domain/reminder_plan.dart which daily nudges to book, from the last known debt (pure, tested)
   persona.dart             Twiga's name and voice
   ai/gemma_runtime.dart    download / activate / generate with flutter_gemma (GPU → CPU)
   ai/web_llm.dart          browser engine: one MediaPipe instance, weights streamed from cache
   ai/quest_writer.dart     model-first, classic-quest fallback writer
   api/savanna_api.dart     SavannaTime /api/v1 client (login, stats, time entries)
-  app_state.dart           one ChangeNotifier; offline queue for finished breaks
-  ui/                      login, home (debt hero, Twiga, week, today), break timer, theme
+  app_state.dart           one ChangeNotifier: day rollover, foreground/background, offline queue
+  reminders.dart           break timer, quest-time alarm and daily nudge (local notifications)
+  ui/                      login, home (debt hero, Twiga, week, today), break timer, reminders, theme
 demo/                      reproducible demo video: seed → record → narrate → edit
 ```
 
