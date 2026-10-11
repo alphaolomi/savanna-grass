@@ -1,0 +1,170 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../domain/screen_day.dart';
+
+/// Every time entry this app writes starts with this, so outdoor time is
+/// recognisable in SavannaTime's web dashboard and countable here.
+const outdoorMarker = '🌿 Touch grass';
+
+class ApiException implements Exception {
+  const ApiException(this.status, this.message, [this.code]);
+
+  final int status;
+  final String message;
+  final String? code;
+
+  bool get isUnauthorized => status == 401;
+
+  @override
+  String toString() => message;
+}
+
+class Session {
+  const Session({required this.token, required this.email});
+
+  final String token;
+  final String email;
+}
+
+/// A finished outdoor break, ready to become a SavannaTime time entry.
+///
+/// `id` is client-generated, exactly like SavannaTime's own activity logs:
+/// re-posting the same id returns the stored entry, so a retry after a dropped
+/// connection can never double-count time outside.
+class OutdoorBreak {
+  const OutdoorBreak({
+    required this.id,
+    required this.title,
+    required this.start,
+    required this.end,
+    this.note,
+  });
+
+  final String id;
+  final String title;
+  final DateTime start;
+  final DateTime end;
+  final String? note;
+
+  String get description {
+    final base = '$outdoorMarker · $title';
+    final n = note?.trim();
+    final full = (n == null || n.isEmpty) ? base : '$base — $n';
+    return full.length > 500 ? full.substring(0, 500) : full;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'start': start.toUtc().toIso8601String(),
+        'end': end.toUtc().toIso8601String(),
+        if (note != null) 'note': note,
+      };
+
+  factory OutdoorBreak.fromJson(Map<String, dynamic> j) => OutdoorBreak(
+        id: j['id'] as String,
+        title: j['title'] as String,
+        start: DateTime.parse(j['start'] as String),
+        end: DateTime.parse(j['end'] as String),
+        note: j['note'] as String?,
+      );
+}
+
+/// Thin client for the SavannaTime API (`/api/v1`).
+class SavannaApi {
+  SavannaApi({required String baseUrl, http.Client? client})
+      : _base = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/')
+            .resolve('api/v1/'),
+        _http = client ?? http.Client();
+
+  final Uri _base;
+  final http.Client _http;
+  String? token;
+
+  Future<Session> login(String email, String password) async {
+    final json = await _send('POST', 'auth/login',
+        body: {'email': email, 'password': password}, auth: false);
+    final user = json['user'] as Map<String, dynamic>;
+    return Session(token: json['token'] as String, email: user['email'] as String);
+  }
+
+  /// Renews a still-valid token in place (SavannaTime `POST /auth/refresh`).
+  Future<String> refresh() async {
+    final json = await _send('POST', 'auth/refresh');
+    return json['token'] as String;
+  }
+
+  Future<void> logout() => _send('POST', 'auth/logout');
+
+  /// Today's screen time. `from`/`to` are *local* calendar dates; the server
+  /// buckets them in the user's SavannaTime timezone.
+  Future<ScreenDay> today(DateTime now) async {
+    final d = _date(now);
+    final json = await _send('GET', 'stats/summary?from=$d&to=$d');
+    return ScreenDay.fromSummaryJson(json['summary'] as Map<String, dynamic>);
+  }
+
+  /// Seconds already spent outside today, summed from this app's entries.
+  Future<int> outdoorSecondsToday(DateTime now) async {
+    final d = _date(now);
+    final json = await _send('GET', 'time-entries?from=$d&to=$d');
+    var total = 0;
+    for (final e in (json['entries'] as List).cast<Map<String, dynamic>>()) {
+      final desc = e['description'] as String? ?? '';
+      final end = e['endTime'] as String?;
+      if (!desc.startsWith(outdoorMarker) || end == null) continue;
+      total += DateTime.parse(end)
+          .difference(DateTime.parse(e['startTime'] as String))
+          .inSeconds;
+    }
+    return total;
+  }
+
+  Future<void> logOutdoorBreak(OutdoorBreak b) => _send('POST', 'time-entries',
+      body: {
+        'id': b.id,
+        'description': b.description,
+        'startTime': b.start.toUtc().toIso8601String(),
+        'endTime': b.end.toUtc().toIso8601String(),
+      });
+
+  static String _date(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<Map<String, dynamic>> _send(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    bool auth = true,
+  }) async {
+    final req = http.Request(method, _base.resolve(path))
+      ..headers['Accept'] = 'application/json';
+    if (auth && token != null) req.headers['Authorization'] = 'Bearer $token';
+    if (body != null) {
+      req.headers['Content-Type'] = 'application/json';
+      req.body = jsonEncode(body);
+    }
+    final res = await http.Response.fromStream(await _http.send(req));
+    Map<String, dynamic> json = const {};
+    if (res.bodyBytes.isNotEmpty) {
+      try {
+        // Always UTF-8: `res.body` falls back to Latin-1 when the server omits
+        // a charset, which would mangle the 🌿 marker on the way back in.
+        final decoded = jsonDecode(utf8.decode(res.bodyBytes));
+        if (decoded is Map<String, dynamic>) json = decoded;
+      } on FormatException {
+        // Non-JSON error page from a proxy; fall through to the status check.
+      }
+    }
+    if (res.statusCode >= 400) {
+      throw ApiException(
+        res.statusCode,
+        json['message'] as String? ?? 'Request failed (${res.statusCode})',
+        json['code'] as String?,
+      );
+    }
+    return json;
+  }
+}
