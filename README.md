@@ -126,6 +126,8 @@ Keychain/Keystore and renewed in place inside its last day.
 
 ## Demo video
 
+▶ **[Watch the 80-second demo on YouTube](https://youtu.be/zt68LUsdivA)**
+
 `demo/` rebuilds the submission video end to end, nothing mocked: `seed.ts` creates a test account
 on a **local** SavannaTime server through the real API; `record.mjs` drives the real web build in
 Chromium with Playwright and captures frames over the DevTools screencast (the break's 21 minutes

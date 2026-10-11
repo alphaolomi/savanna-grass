@@ -4,8 +4,7 @@ published: false
 tags: devchallenge, hf26challenge, flutter, gemma
 ---
 
-<!-- Before publishing: upload demo/out/savanna-grass-demo.mp4 to YouTube and paste the link
-     under Demo, fill in "I Took It Outside" from a real break, then delete this comment. -->
+<!-- Before publishing: fill in "I Took It Outside" from a real break, then delete this comment. -->
 
 *This is a submission for the [Hacktoberfest Open-Source AI Challenge — Week 1: Touch Grass](https://dev.to/devteam/join-the-hacktoberfest-open-source-ai-challenge-week-1-touch-grass-2450-in-prizes-across-17-4pom).*
 
@@ -37,7 +36,7 @@ already have a tracker telling them so.
 
 ## Demo
 
-TODO: {% embed https://youtu.be/YOUR_VIDEO_ID %}
+{% embed https://youtu.be/zt68LUsdivA %}
 
 80 seconds, nothing mocked: the real app against a local SavannaTime server with a seeded test
 account. Twiga writes two quests, the second with the **network switched off**. The break's 21
