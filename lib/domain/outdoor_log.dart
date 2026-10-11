@@ -1,3 +1,5 @@
+import 'local_day.dart';
+
 /// A break spent outside, as logged to SavannaTime (or still queued locally).
 class LoggedBreak {
   const LoggedBreak({
@@ -17,6 +19,25 @@ class LoggedBreak {
   final bool pending;
 
   int get seconds => end.difference(start).inSeconds;
+
+  /// The part of this break that falls on the local [day]. A break across
+  /// midnight is split between the two days rather than credited to the one
+  /// it started on.
+  int secondsOn(DateTime day) => overlapSeconds(start, end, day);
+
+  Map<String, dynamic> toJson() => {
+        'start': start.toUtc().toIso8601String(),
+        'end': end.toUtc().toIso8601String(),
+        'title': title,
+        if (note != null) 'note': note,
+      };
+
+  factory LoggedBreak.fromJson(Map<String, dynamic> j) => LoggedBreak(
+        start: DateTime.parse(j['start'] as String).toLocal(),
+        end: DateTime.parse(j['end'] as String).toLocal(),
+        title: j['title'] as String,
+        note: j['note'] as String?,
+      );
 }
 
 /// The last seven local days of time outside, oldest first, plus the streak.
@@ -36,13 +57,13 @@ class OutdoorWeek {
   int get totalMinutes => minutes.fold(0, (a, b) => a + b);
 
   factory OutdoorWeek.from(Iterable<LoggedBreak> breaks, DateTime now) {
-    final today = DateTime(now.year, now.month, now.day);
-    final days = [for (var i = 6; i >= 0; i--) DateTime(today.year, today.month, today.day - i)];
+    final today = localDay(now);
+    final days = [for (var i = 6; i >= 0; i--) addDays(today, -i)];
     final seconds = List<int>.filled(7, 0);
     for (final b in breaks) {
-      final l = b.start.toLocal();
-      final idx = days.indexOf(DateTime(l.year, l.month, l.day));
-      if (idx >= 0) seconds[idx] += b.seconds;
+      for (var i = 0; i < 7; i++) {
+        seconds[i] += b.secondsOn(days[i]);
+      }
     }
     final minutes = [for (final s in seconds) s ~/ 60];
 

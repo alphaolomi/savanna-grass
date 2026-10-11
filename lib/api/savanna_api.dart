@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../domain/local_day.dart';
 import '../domain/outdoor_log.dart';
 import '../domain/screen_day.dart';
 
@@ -108,10 +109,10 @@ class SavannaApi {
 
   Future<void> logout() => _send('POST', 'auth/logout');
 
-  /// Today's screen time. `from`/`to` are *local* calendar dates; the server
-  /// buckets them in the user's SavannaTime timezone.
-  Future<ScreenDay> today(DateTime now) async {
-    final d = _date(now);
+  /// One local day's screen time. `from`/`to` are *local* calendar dates; the
+  /// server buckets them in the user's SavannaTime timezone.
+  Future<ScreenDay> today(DateTime day) async {
+    final d = _date(day);
     final json = await _send('GET', 'stats/summary?from=$d&to=$d');
     return ScreenDay.fromSummaryJson(json['summary'] as Map<String, dynamic>);
   }
@@ -144,8 +145,7 @@ class SavannaApi {
         'endTime': b.end.toUtc().toIso8601String(),
       });
 
-  static String _date(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  static String _date(DateTime d) => dateKey(d);
 
   Future<Map<String, dynamic>> _send(
     String method,

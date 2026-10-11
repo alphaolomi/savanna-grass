@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import '../persona.dart';
 import 'theme.dart';
 
+/// Messages that must outlive the screen that raised them, like the "logged"
+/// note shown as a finished break hands back to the home screen.
+final rootMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
 /// Twiga's face: the brand giraffe on the brand green, as on the app icon.
 class TwigaAvatar extends StatelessWidget {
   const TwigaAvatar({super.key, this.size = 40});

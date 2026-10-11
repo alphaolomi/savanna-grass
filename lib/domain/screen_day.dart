@@ -32,6 +32,18 @@ class ScreenDay {
   int get distractingSeconds =>
       (secondsByLevel[-2] ?? 0) + (secondsByLevel[-1] ?? 0);
 
+  /// The same shape [ScreenDay.fromSummaryJson] reads, so the last good day
+  /// can be kept on the phone and shown on an offline cold start.
+  Map<String, dynamic> toSummaryJson() => {
+        'totalSeconds': totalSeconds,
+        'secondsByLevel': {for (final e in secondsByLevel.entries) '${e.key}': e.value},
+        'pulse': pulse,
+        'topApps': [
+          for (final a in topApps)
+            {'appName': a.name, 'totalSeconds': a.seconds, 'productivity': a.productivity},
+        ],
+      };
+
   factory ScreenDay.fromSummaryJson(Map<String, dynamic> json) {
     final levels = (json['secondsByLevel'] as Map<String, dynamic>? ?? {})
         .map((k, v) => MapEntry(int.parse(k), (v as num).toInt()));
