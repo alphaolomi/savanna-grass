@@ -130,6 +130,26 @@ class SavannaApi {
     return ScreenDay.fromSummaryJson(json['summary'] as Map<String, dynamic>);
   }
 
+  /// Per-day totals for a range of local dates, inclusive (`/stats/daily`).
+  /// Days with nothing tracked may be absent.
+  Future<List<DayTotals>> daily(DateTime from, DateTime to) async {
+    final json = await _send('GET', 'stats/daily?from=${_date(from)}&to=${_date(to)}');
+    return (json['days'] as List? ?? const [])
+        .cast<Map<String, dynamic>>()
+        .map(DayTotals.fromJson)
+        .toList();
+  }
+
+  /// One local day folded onto its 24 hours (`/stats/timeline`), all 24
+  /// present, hour 0 first.
+  Future<List<HourSlice>> timeline(DateTime day) async {
+    final d = _date(day);
+    final json = await _send('GET', 'stats/timeline?from=$d&to=$d');
+    return HourSlice.fullDay(
+      (json['hours'] as List? ?? const []).cast<Map<String, dynamic>>().map(HourSlice.fromJson),
+    );
+  }
+
   /// Finished outdoor breaks this app logged between two local dates,
   /// inclusive. Other time entries in SavannaTime are ignored.
   Future<List<LoggedBreak>> outdoorBreaks(DateTime from, DateTime to) async {
@@ -141,6 +161,7 @@ class SavannaApi {
       if (!desc.startsWith(outdoorMarker) || end == null) continue;
       final (title, note) = parseOutdoorDescription(desc);
       breaks.add(LoggedBreak(
+        id: e['id'] as String?,
         start: DateTime.parse(e['startTime'] as String).toLocal(),
         end: DateTime.parse(end).toLocal(),
         title: title,
