@@ -126,6 +126,22 @@ List<DayRecord> buildWeek({
   ];
 }
 
+/// Seconds outside in each of [day]'s 24 local hours, hour 0 first.
+List<int> outdoorSecondsByHour(Iterable<LoggedBreak> breaks, DateTime day) {
+  final d = localDay(day);
+  final out = List<int>.filled(24, 0);
+  for (var h = 0; h < 24; h++) {
+    final from = DateTime(d.year, d.month, d.day, h);
+    final to = DateTime(d.year, d.month, d.day, h + 1);
+    for (final b in breaks) {
+      final s = b.start.isAfter(from) ? b.start : from;
+      final e = b.end.isBefore(to) ? b.end : to;
+      if (e.isAfter(s)) out[h] += e.difference(s).inSeconds;
+    }
+  }
+  return out;
+}
+
 /// A day's full picture for its detail page: the summary, its 24 hours, and
 /// the record built from them.
 class DayDetail {

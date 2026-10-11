@@ -145,6 +145,13 @@ void main() {
     });
   });
 
+  test('time outside is spread over the hours it covered', () {
+    final h = outdoorSecondsByHour([brk(DateTime(2026, 10, 12, 9, 50), 25)], DateTime(2026, 10, 12));
+    expect((h[9], h[10], h[11]), (600, 900, 0));
+    final night = outdoorSecondsByHour([brk(DateTime(2026, 10, 11, 23, 50), 20)], DateTime(2026, 10, 12));
+    expect(night[0], 600, reason: "only the new day's share");
+  });
+
   test('a failed reload keeps the data it had', () {
     final at = DateTime(2026, 10, 12, 9);
     final l = const Loadable<int>().started().succeeded(7, at).started().failed('offline');
