@@ -5,8 +5,11 @@ import '../config.dart';
 import '../domain/outdoor_log.dart';
 import '../domain/quest.dart';
 import '../persona.dart';
+import 'break_detail_screen.dart';
+import 'day_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
+import 'week_screen.dart';
 import 'widgets.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -49,9 +52,17 @@ class HomeScreen extends StatelessWidget {
                   ],
                   _QuestCard(state: state),
                   const SizedBox(height: 12),
-                  _WeekCard(week: state.week),
+                  _WeekCard(
+                    week: state.week,
+                    onOpen: () => WeekScreen.open(context, state),
+                    onDay: (d) => DayScreen.open(context, state, d),
+                  ),
                   const SizedBox(height: 12),
-                  _TodayCard(breaks: state.todayBreaks, today: state.today),
+                  _TodayCard(
+                    breaks: state.todayBreaks,
+                    today: state.today,
+                    onBreak: (b) => BreakDetailScreen.open(context, state, b),
+                  ),
                 ],
               ),
             ),
@@ -131,79 +142,96 @@ class _DebtHero extends StatelessWidget {
     final debt = state.debt;
     final day = state.day;
     final firstLoad = state.loadedAt == null;
-    return Container(
-      decoration: BoxDecoration(
+    // Ink, not Container, so the tap ripple draws over the gradient.
+    return Material(
+      type: MaterialType.transparency,
+        child: InkWell(
         borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [s.heroTop, s.heroBottom],
-        ),
-      ),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      child: Column(
-        children: [
-          Row(
+        onTap: () => DayScreen.open(context, state, state.today),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [s.heroTop, s.heroBottom],
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+          child: Column(
             children: [
-              ProgressRing(
-                size: 100,
-                stroke: 9,
-                value: debt.progress,
-                color: s.ring,
-                track: s.ringTrack,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      debt.isPaid ? '✓' : '${debt.remainingMinutes}',
-                      style: t.textTheme.headlineMedium?.copyWith(color: s.onHero, fontWeight: FontWeight.w800, height: 1),
+              Row(
+                children: [
+                  ProgressRing(
+                    size: 100,
+                    stroke: 9,
+                    value: debt.progress,
+                    color: s.ring,
+                    track: s.ringTrack,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          debt.isPaid ? '✓' : '${debt.remainingMinutes}',
+                          style: t.textTheme.headlineMedium?.copyWith(color: s.onHero, fontWeight: FontWeight.w800, height: 1),
+                        ),
+                        Text(debt.isPaid ? 'paid' : 'min to go',
+                            style: t.textTheme.labelSmall?.copyWith(color: s.onHeroMuted)),
+                      ],
                     ),
-                    Text(debt.isPaid ? 'paid' : 'min to go',
-                        style: t.textTheme.labelSmall?.copyWith(color: s.onHeroMuted)),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('GRASS DEBT', style: t.textTheme.labelSmall?.copyWith(color: s.onHeroMuted)),
+                        const SizedBox(height: 2),
+                        Text(
+                          firstLoad && state.loading
+                              ? 'Reading your day…'
+                              : debt.isPaid
+                                  ? (debt.owedMinutes == 0 ? 'Nothing owed yet' : 'All paid today')
+                                  : '${debt.remainingMinutes} min outside to go',
+                          style: t.textTheme.titleLarge?.copyWith(color: s.onHero, height: 1.15),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${debt.owedMinutes} min earned by ${formatDuration(day.totalSeconds)} on screens. '
+                          '10 min per hour, distracting time ×1.5.',
+                          style: t.textTheme.bodySmall?.copyWith(color: s.onHeroMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('GRASS DEBT', style: t.textTheme.labelSmall?.copyWith(color: s.onHeroMuted)),
-                    const SizedBox(height: 2),
-                    Text(
-                      firstLoad && state.loading
-                          ? 'Reading your day…'
-                          : debt.isPaid
-                              ? (debt.owedMinutes == 0 ? 'Nothing owed yet' : 'All paid today')
-                              : '${debt.remainingMinutes} min outside to go',
-                      style: t.textTheme.titleLarge?.copyWith(color: s.onHero, height: 1.15),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${debt.owedMinutes} min earned by ${formatDuration(day.totalSeconds)} on screens. '
-                      '10 min per hour, distracting time ×1.5.',
-                      style: t.textTheme.bodySmall?.copyWith(color: s.onHeroMuted),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _HeroStat(icon: Icons.desktop_windows_outlined, label: 'Screens', value: formatDuration(day.totalSeconds)),
+                  _HeroStat(icon: Icons.bolt_outlined, label: 'Distracting', value: formatDuration(day.distractingSeconds)),
+                  _HeroStat(icon: Icons.park_outlined, label: 'Outside', value: formatDuration(state.outdoorSeconds)),
+                  _HeroStat(icon: Icons.favorite_border, label: 'Pulse', value: day.pulse?.toString() ?? '—'),
+                ],
               ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text('Hour by hour, apps and the maths',
+                      style: t.textTheme.labelMedium?.copyWith(color: s.onHeroMuted)),
+                  Icon(Icons.chevron_right, size: 18, color: s.onHeroMuted),
+                ],
+              ),
+              if (state.loading) ...[
+                const SizedBox(height: 6),
+                LinearProgressIndicator(minHeight: 2, color: s.ring, backgroundColor: s.ringTrack),
+              ],
             ],
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _HeroStat(icon: Icons.desktop_windows_outlined, label: 'Screens', value: formatDuration(day.totalSeconds)),
-              _HeroStat(icon: Icons.bolt_outlined, label: 'Distracting', value: formatDuration(day.distractingSeconds)),
-              _HeroStat(icon: Icons.park_outlined, label: 'Outside', value: formatDuration(state.outdoorSeconds)),
-              _HeroStat(icon: Icons.favorite_border, label: 'Pulse', value: day.pulse?.toString() ?? '—'),
-            ],
-          ),
-          if (state.loading) ...[
-            const SizedBox(height: 10),
-            LinearProgressIndicator(minHeight: 2, color: s.ring, backgroundColor: s.ringTrack),
-          ],
-        ],
       ),
+    ),
     );
   }
 }
@@ -495,8 +523,10 @@ class _Thinking extends StatelessWidget {
 }
 
 class _WeekCard extends StatelessWidget {
-  const _WeekCard({required this.week});
+  const _WeekCard({required this.week, required this.onOpen, required this.onDay});
   final OutdoorWeek week;
+  final VoidCallback onOpen;
+  final void Function(DateTime day) onDay;
 
   static const _letters = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -505,75 +535,84 @@ class _WeekCard extends StatelessWidget {
     final t = Theme.of(context);
     final top = week.minutes.fold(30, (a, b) => b > a ? b : a);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text('This week outside', style: t.textTheme.titleMedium)),
-                if (week.streak > 0)
-                  Pill(
-                    icon: Icons.local_fire_department,
-                    text: '${week.streak}-day streak',
-                    tone: PillTone.sun,
-                  ),
-              ],
-            ),
-            Text(
-              week.totalMinutes == 0
-                  ? 'No time outside logged in the last 7 days yet.'
-                  : '${formatDuration(week.totalMinutes * 60)} across the last 7 days',
-              style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 78,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  for (var i = 0; i < 7; i++)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (week.minutes[i] > 0)
-                              Text('${week.minutes[i]}',
-                                  style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onSurfaceVariant, fontSize: 10)),
-                            const SizedBox(height: 2),
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: week.minutes[i] / top),
-                              duration: const Duration(milliseconds: 600),
-                              curve: Curves.easeOutCubic,
-                              builder: (context, v, _) => Container(
-                                height: 4 + 40 * v,
-                                decoration: BoxDecoration(
-                                  color: i == 6
-                                      ? t.colorScheme.primary
-                                      : t.colorScheme.primary.withValues(alpha: week.minutes[i] > 0 ? 0.45 : 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              i == 6 ? 'Today' : _letters[week.days[i].weekday - 1],
-                              style: t.textTheme.labelSmall?.copyWith(
-                                color: i == 6 ? t.colorScheme.primary : t.colorScheme.onSurfaceVariant,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                  Expanded(child: Text('This week outside', style: t.textTheme.titleMedium)),
+                  if (week.streak > 0)
+                    Pill(
+                      icon: Icons.local_fire_department,
+                      text: '${week.streak}-day streak',
+                      tone: PillTone.sun,
                     ),
+                  Icon(Icons.chevron_right, color: t.colorScheme.onSurfaceVariant),
                 ],
               ),
-            ),
-          ],
+              Text(
+                week.totalMinutes == 0
+                    ? 'No time outside logged in the last 7 days yet.'
+                    : '${formatDuration(week.totalMinutes * 60)} across the last 7 days',
+                style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 78,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < 7; i++)
+                      Expanded(
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () => onDay(week.days[i]),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                if (week.minutes[i] > 0)
+                                  Text('${week.minutes[i]}',
+                                      style: t.textTheme.labelSmall?.copyWith(color: t.colorScheme.onSurfaceVariant, fontSize: 10)),
+                                const SizedBox(height: 2),
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0, end: week.minutes[i] / top),
+                                  duration: const Duration(milliseconds: 600),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, v, _) => Container(
+                                    height: 4 + 40 * v,
+                                    decoration: BoxDecoration(
+                                      color: i == 6
+                                          ? t.colorScheme.primary
+                                          : t.colorScheme.primary.withValues(alpha: week.minutes[i] > 0 ? 0.45 : 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  i == 6 ? 'Today' : _letters[week.days[i].weekday - 1],
+                                  style: t.textTheme.labelSmall?.copyWith(
+                                    color: i == 6 ? t.colorScheme.primary : t.colorScheme.onSurfaceVariant,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -581,8 +620,9 @@ class _WeekCard extends StatelessWidget {
 }
 
 class _TodayCard extends StatelessWidget {
-  const _TodayCard({required this.breaks, required this.today});
+  const _TodayCard({required this.breaks, required this.today, required this.onBreak});
   final List<LoggedBreak> breaks;
+  final void Function(LoggedBreak b) onBreak;
 
   /// Local midnight: a break that began before it shows only today's share.
   final DateTime today;
@@ -606,35 +646,40 @@ class _TodayCard extends StatelessWidget {
                 child: Text('No grass yet today. Your first quest is waiting.', style: muted),
               ),
             for (final b in breaks)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(color: t.colorScheme.primaryContainer, shape: BoxShape.circle),
-                      child: Icon(Icons.park, size: 18, color: t.colorScheme.onPrimaryContainer),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(b.title, style: t.textTheme.titleSmall),
-                          Text(
-                            '${b.start.isBefore(today) ? 'Since midnight' : hm(b.start.toLocal())}'
-                            ' · ${(b.secondsOn(today) / 60).round()} min'
-                            '${b.pending ? ' · waiting to sync' : ' · in SavannaTime'}',
-                            style: muted,
-                          ),
-                          if (b.note != null)
-                            Text('“${b.note}”', style: muted?.copyWith(fontStyle: FontStyle.italic)),
-                        ],
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => onBreak(b),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(color: t.colorScheme.primaryContainer, shape: BoxShape.circle),
+                        child: Icon(Icons.park, size: 18, color: t.colorScheme.onPrimaryContainer),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(b.title, style: t.textTheme.titleSmall),
+                            Text(
+                              '${b.start.isBefore(today) ? 'Since midnight' : hm(b.start.toLocal())}'
+                              ' · ${(b.secondsOn(today) / 60).round()} min'
+                              '${b.pending ? ' · waiting to sync' : ' · in SavannaTime'}',
+                              style: muted,
+                            ),
+                            if (b.note != null)
+                              Text('“${b.note}”', style: muted?.copyWith(fontStyle: FontStyle.italic)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: t.colorScheme.onSurfaceVariant),
+                    ],
+                  ),
                 ),
               ),
           ],

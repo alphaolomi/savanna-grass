@@ -22,6 +22,9 @@ class FakeServer {
   /// Of [screenSeconds], how much was very distracting (-2), per date.
   final distractingSeconds = <String, int>{};
   final timelineDates = <String>[];
+
+  /// `topApps` rows every summary returns.
+  final topApps = <Map<String, dynamic>>[];
   final entries = <String, Map<String, dynamic>>{};
   final summaryDates = <String>[];
   bool offline = false;
@@ -51,7 +54,7 @@ class FakeServer {
           'totalSeconds': screenSeconds[d] ?? 0,
           'secondsByLevel': {'-2': distractingSeconds[d] ?? 0},
           'pulse': null,
-          'topApps': [],
+          'topApps': topApps,
         },
       });
     }

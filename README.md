@@ -113,7 +113,8 @@ lib/
   app_state.dart           one ChangeNotifier: day rollover, foreground/background, offline queue,
                            the week's history and per-day detail cache
   reminders.dart           break timer, quest-time alarm and daily nudge (local notifications)
-  ui/                      login, home (debt hero, Twiga, week, today), break timer, profile, reminders, theme
+  ui/                      login, home (debt hero, Twiga, week, today), break timer, profile, reminders, theme;
+                           detail pages: a day (debt worked out, hour by hour, apps, breaks), the week, a break
 demo/                      reproducible demo video: seed → record → narrate → edit
 ```
 

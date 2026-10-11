@@ -43,8 +43,7 @@ class DayRecord {
     required Iterable<LoggedBreak> allBreaks,
   }) {
     final d = localDay(day);
-    final breaks = allBreaks.where((b) => b.secondsOn(d) > 0).toList()
-      ..sort((a, b) => b.start.compareTo(a.start));
+    final breaks = allBreaks.where((b) => b.secondsOn(d) > 0).toList()..sort((a, b) => b.start.compareTo(a.start));
     final outdoor = breaks.fold(0, (s, b) => s + b.secondsOn(d));
     return DayRecord(
       day: d,
