@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -7,6 +8,7 @@ import 'ai/gemma_runtime.dart';
 import 'ai/quest_writer.dart';
 import 'api/savanna_api.dart';
 import 'domain/grass_debt.dart';
+import 'domain/outdoor_log.dart';
 import 'domain/quest.dart';
 import 'domain/screen_day.dart';
 import 'storage.dart';
@@ -34,13 +36,14 @@ class AppState extends ChangeNotifier {
 
   AuthStatus auth = AuthStatus.unknown;
   String? email;
+  ThemeMode themeMode = ThemeMode.system;
 
   ModelStatus modelStatus = ModelStatus.checking;
   int downloadPercent = 0;
   String? modelError;
 
   ScreenDay day = ScreenDay.empty;
-  int _serverOutdoorSeconds = 0;
+  List<LoggedBreak> _serverBreaks = [];
   List<OutdoorBreak> pending = [];
   bool loading = false;
   String? loadError;
@@ -49,17 +52,26 @@ class AppState extends ChangeNotifier {
   Setting setting = Setting.home;
   Quest? quest;
   bool writing = false;
+  int _questsWritten = 0;
 
-  /// Outside time counts the moment the break ends, even before it syncs.
-  int get outdoorSeconds =>
-      _serverOutdoorSeconds +
-      pending
-          .where((b) => _isToday(b.start))
-          .fold(0, (s, b) => s + b.end.difference(b.start).inSeconds);
+  /// This week's breaks: what the server has, plus anything still queued —
+  /// time outside counts the moment the break ends, not when it syncs.
+  List<LoggedBreak> get breaks => [
+        ..._serverBreaks,
+        for (final b in pending)
+          LoggedBreak(start: b.start, end: b.end, title: b.title, note: b.note, pending: true),
+      ]..sort((a, b) => b.start.compareTo(a.start));
+
+  List<LoggedBreak> get todayBreaks => breaks.where((b) => _isToday(b.start)).toList();
+
+  int get outdoorSeconds => todayBreaks.fold(0, (s, b) => s + b.seconds);
 
   GrassDebt get debt => GrassDebt.compute(day, outdoorSeconds: outdoorSeconds);
 
+  OutdoorWeek get week => OutdoorWeek.from(breaks, DateTime.now());
+
   Future<void> boot() async {
+    themeMode = await storage.readThemeMode();
     unawaited(_checkModel());
     final session = await storage.readSession();
     pending = await storage.readPending();
@@ -74,6 +86,16 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     await _refreshTokenIfNeeded();
     await refresh();
+  }
+
+  void cycleTheme() {
+    themeMode = switch (themeMode) {
+      ThemeMode.system => ThemeMode.light,
+      ThemeMode.light => ThemeMode.dark,
+      ThemeMode.dark => ThemeMode.system,
+    };
+    unawaited(storage.writeThemeMode(themeMode));
+    notifyListeners();
   }
 
   Future<void> signIn(String email, String password) async {
@@ -93,11 +115,11 @@ class AppState extends ChangeNotifier {
       // Signing out locally must work offline; the token expires on its own.
     }
     api.token = null;
-    await storage.clear();
+    await storage.clearSession();
     auth = AuthStatus.signedOut;
     email = null;
     day = ScreenDay.empty;
-    _serverOutdoorSeconds = 0;
+    _serverBreaks = [];
     pending = [];
     quest = null;
     notifyListeners();
@@ -112,10 +134,10 @@ class AppState extends ChangeNotifier {
       final now = DateTime.now();
       final results = await Future.wait([
         api.today(now),
-        api.outdoorSecondsToday(now),
+        api.outdoorBreaks(now.subtract(const Duration(days: 6)), now),
       ]);
       day = results[0] as ScreenDay;
-      _serverOutdoorSeconds = results[1] as int;
+      _serverBreaks = results[1] as List<LoggedBreak>;
       loadedAt = now;
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
@@ -124,7 +146,7 @@ class AppState extends ChangeNotifier {
       }
       loadError = e.message;
     } catch (e) {
-      loadError = 'Offline — showing the last numbers we had.';
+      loadError = "You're offline — showing the last numbers we had.";
     } finally {
       loading = false;
       notifyListeners();
@@ -145,6 +167,7 @@ class AppState extends ChangeNotifier {
         debt: debt,
         now: DateTime.now(),
         setting: setting,
+        variety: _questsWritten++,
       ));
     } finally {
       writing = false;
@@ -166,7 +189,7 @@ class AppState extends ChangeNotifier {
       title: title,
       start: start,
       end: end,
-      note: note,
+      note: (note?.trim().isEmpty ?? true) ? null : note!.trim(),
     );
     pending = [...pending, b];
     await storage.writePending(pending);
@@ -220,6 +243,14 @@ class AppState extends ChangeNotifier {
       } catch (_) {
         remaining.add(b);
       }
+    }
+    // Synced breaks move to the server list right away, so the totals do not
+    // dip while the follow-up refresh is in flight.
+    for (final b in pending.where((b) => !remaining.contains(b))) {
+      _serverBreaks = [
+        ..._serverBreaks,
+        LoggedBreak(start: b.start, end: b.end, title: b.title, note: b.note),
+      ];
     }
     pending = remaining;
     await storage.writePending(pending);

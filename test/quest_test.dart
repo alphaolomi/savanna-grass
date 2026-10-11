@@ -20,58 +20,98 @@ void main() {
   group('prompt', () {
     test('carries aggregates only, with the target length', () {
       final p = buildQuestPrompt(ctx);
-      expect(p, contains('Screen time today: 5h 00m'));
-      expect(p, contains('YouTube (1h 00m)'));
-      expect(p, contains('October afternoon'));
+      expect(p, contains('Today: 5h 00m on screens, 1h 00m of it distracting.'));
+      expect(p, contains('Most used: YouTube.'));
+      expect(p, isNot(contains('1h 00m)'))); // app names only, no per-app times
+      expect(p, contains('It is an October afternoon. It is daylight.'));
       expect(p, contains('about 20 minutes'));
-      expect(p, contains('It is daylight.'));
+      expect(p, isNot(contains('MINUTES')));
     });
 
-    test('asks for a safe, lit spot after dark', () {
+    test('after dark: close, safe and lit, and no sunshine', () {
       final night = QuestContext(
         day: ctx.day,
         debt: ctx.debt,
         now: DateTime(2026, 10, 11, 22),
         setting: Setting.home,
       );
-      expect(buildQuestPrompt(night), contains('well-lit'));
+      final p = buildQuestPrompt(night);
+      expect(p, contains('It is dark outside.'));
+      expect(p, contains('safe and lit'));
+      expect(p, contains('do not mention the sun'));
+    });
+
+    test('another quest leans on a different sense', () {
+      QuestContext v(int i) => QuestContext(
+          day: ctx.day, debt: ctx.debt, now: ctx.now, setting: ctx.setting, variety: i);
+      expect(v(0).focus, isNot(v(1).focus));
     });
   });
 
   group('parseQuest', () {
-    test('reads the four labelled lines', () {
+    test('reads the labelled lines; the minutes are always the app\'s', () {
       final q = parseQuest('''
 TITLE: The Leaf Census
-MINUTES: 15
+MINUTES: 45
 STEPS: Walk around the block and collect three different leaves.
-WHY: Five hours of screens deserve a closer look at something real.''',
-          fallbackMinutes: 10)!;
+WHY: Five hours of screens deserve a closer look at something real.''', minutes: 20)!;
       expect(q.title, 'The Leaf Census');
-      expect(q.minutes, 15);
+      expect(q.minutes, 20);
       expect(q.steps, startsWith('Walk around'));
       expect(q.why, startsWith('Five hours'));
       expect(q.source, QuestSource.gemma);
     });
 
-    test('tolerates markdown bold, chatter and "15 minutes"', () {
+    test('tolerates markdown bold, chatter and code fences', () {
       final q = parseQuest('''
 Sure! Here is your quest:
+```
 **TITLE:** "Sky Watch"
-**MINUTES:** 15 minutes
-**STEPS:** Find a bench and watch the clouds.''', fallbackMinutes: 10)!;
+**STEPS:** Find a bench and watch the clouds.
+```''', minutes: 10)!;
       expect(q.title, 'Sky Watch');
-      expect(q.minutes, 15);
       expect(q.why, '');
     });
 
-    test('falls back to the target minutes when MINUTES is missing', () {
-      final q = parseQuest('TITLE: X\nSTEPS: Go outside.', fallbackMinutes: 12)!;
-      expect(q.minutes, 12);
+    test('takes an unlabelled first line as the title, and calms ALL CAPS', () {
+      final q = parseQuest('''
+THE SUN-DRENCHED WALK
+MINUTES: 30
+STEPS: Step into the tall grass and count the falling leaves.''', minutes: 30)!;
+      expect(q.title, 'The Sun-Drenched Walk');
+      expect(q.steps, startsWith('Step into'));
+    });
+
+    test('folds a numbered STEPS list into one instruction', () {
+      final q = parseQuest('''
+TITLE: Cozy Vibes
+STEPS:
+1. Find a shady spot on the balcony.
+2. Listen for three different birds.
+WHY: Your eyes need a break.''', minutes: 10)!;
+      expect(q.steps, 'Find a shady spot on the balcony. Listen for three different birds.');
+      expect(q.why, 'Your eyes need a break.');
+    });
+
+    test('keeps two steps of a long list, and rejects an echoed format', () {
+      final q = parseQuest('TITLE: Sky\nSTEPS:\n1. One.\n2. Two.\n3. Three.', minutes: 10)!;
+      expect(q.steps, 'One. Two.');
+      final inline =
+          parseQuest('TITLE: X\nSTEPS: Find a corner, 2. Count leaves, 3. Breathe.', minutes: 10)!;
+      expect(inline.steps, 'Find a corner, Count leaves, Breathe.');
+      expect(parseQuest('TITLE: <a playful title>\nSTEPS: <what to do>', minutes: 10), isNull);
+    });
+
+    test('ignores a second, repeated answer', () {
+      final q = parseQuest('TITLE: First\nSTEPS: Go out.\nTITLE: Second\nSTEPS: Stay in.', minutes: 10)!;
+      expect(q.title, 'First');
+      expect(q.steps, 'Go out.');
     });
 
     test('returns null when the answer is unusable', () {
-      expect(parseQuest('I cannot help with that.', fallbackMinutes: 10), isNull);
-      expect(parseQuest('TITLE: Only a title', fallbackMinutes: 10), isNull);
+      expect(parseQuest('', minutes: 10), isNull);
+      expect(parseQuest('```\n```\n```', minutes: 10), isNull);
+      expect(parseQuest('TITLE: Only a title', minutes: 10), isNull);
     });
   });
 
@@ -100,6 +140,15 @@ Sure! Here is your quest:
       final q = await w.write(ctx);
       expect(q.source, QuestSource.gemma);
       expect(w.lastFallbackReason, isNull);
+    });
+
+    test('fills a missing WHY from the real numbers', () async {
+      final w = LocalModelQuestWriter(
+        generate: (_) async => 'TITLE: Hi\nSTEPS: Go.',
+        isReady: () => true,
+      );
+      final q = await w.write(ctx);
+      expect(q.why, '5h 00m on screens today. This pays back 20 of your 20 minutes.');
     });
 
     test('never fails the person when the model throws', () async {

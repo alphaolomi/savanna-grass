@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
+import '../config.dart';
 import '../domain/quest.dart';
 
 /// Turns today's context into a quest. The model behind it is swappable —
@@ -31,14 +34,23 @@ class LocalModelQuestWriter implements QuestWriter {
     }
     try {
       final raw = await generate(buildQuestPrompt(context));
-      final quest = parseQuest(raw, fallbackMinutes: context.targetMinutes);
+      if (Config.debugQuests) debugPrint('[quest] raw: $raw');
+      final quest = parseQuest(raw, minutes: context.targetMinutes);
       if (quest != null) {
         lastFallbackReason = null;
-        return quest;
+        if (quest.why.isNotEmpty) return quest;
+        return Quest(
+          title: quest.title,
+          minutes: quest.minutes,
+          steps: quest.steps,
+          why: twigaWhy(context),
+          source: quest.source,
+        );
       }
       lastFallbackReason = 'model answer did not parse';
     } catch (e) {
       lastFallbackReason = 'model error: $e';
+      if (Config.debugQuests) debugPrint('[quest] error: $e');
     }
     return templateQuest(context, seed: _templateSeed++);
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'api/savanna_api.dart';
@@ -15,6 +16,7 @@ class Storage {
   static const _token = 'token';
   static const _email = 'email';
   static const _pending = 'pending_breaks';
+  static const _theme = 'theme_mode';
 
   Future<Session?> readSession() async {
     final token = await _s.read(key: _token);
@@ -28,7 +30,19 @@ class Storage {
     await _s.write(key: _email, value: s.email);
   }
 
-  Future<void> clear() => _s.deleteAll();
+  /// Signs out: the session and any unsynced breaks go; the theme stays.
+  Future<void> clearSession() async {
+    await _s.delete(key: _token);
+    await _s.delete(key: _email);
+    await _s.delete(key: _pending);
+  }
+
+  Future<ThemeMode> readThemeMode() async {
+    final v = await _s.read(key: _theme);
+    return ThemeMode.values.firstWhere((m) => m.name == v, orElse: () => ThemeMode.system);
+  }
+
+  Future<void> writeThemeMode(ThemeMode m) => _s.write(key: _theme, value: m.name);
 
   Future<List<OutdoorBreak>> readPending() async {
     final raw = await _s.read(key: _pending);

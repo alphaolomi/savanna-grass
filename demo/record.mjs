@@ -16,6 +16,7 @@
 import { createRequire } from "node:module";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { homedir } from "node:os";
 
 const require = createRequire(join(process.env.PLAYWRIGHT_DIR, "package.json"));
 const { chromium } = require("playwright");
@@ -30,19 +31,21 @@ const account = JSON.parse(readFileSync(join(out, "account.json"), "utf8"));
 const APP = process.env.APP_URL ?? "http://localhost:8090/";
 const shots = process.argv.includes("--shots");
 
-// A fresh profile per take: signed out, no model cached. The model comes from
+// A fresh but *real* profile per take: signed out, no model cached. An
+// in-memory (incognito-like) context has too little storage quota for the
+// 700 MB model, so Cache API writes fail there. The model comes from
 // demo/serve.ts on localhost, so the "one-time download" takes seconds.
-const browser = await chromium.launch({
+const profile = join(homedir(), ".savanna-demo-tools", "take-profile");
+rmSync(profile, { recursive: true, force: true });
+const context = await chromium.launchPersistentContext(profile, {
   headless: false,
-  args: ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--window-size=460,1000"],
-});
-const context = await browser.newContext({
   viewport: { width: 412, height: 870 },
   deviceScaleFactor: 2,
+  args: ["--enable-unsafe-webgpu", "--enable-features=Vulkan", "--window-size=460,1000"],
 });
-const page = await context.newPage();
+const page = context.pages()[0] ?? (await context.newPage());
 page.on("console", (m) => {
-  if (m.type() === "error") console.log("[page]", m.text().slice(0, 300));
+  if (m.type() === "error" || m.text().startsWith("[quest]")) console.log("[page]", m.text().slice(0, 900));
 });
 
 // --- screencast ------------------------------------------------------------
@@ -93,19 +96,21 @@ async function waitText(re, timeout = 120_000) {
 
 // --- flow ------------------------------------------------------------------
 await page.goto(APP);
-await waitText(/Sign in with your SavannaTime account/);
+await waitText(/Sign in with SavannaTime/);
 await cdp.send("Page.startScreencast", { format: "jpeg", quality: 92, everyNthFrame: 1 });
 wall0.at = Date.now();
 mark("login");
 await pause(1500);
 
 await sem("textbox", "Email").click();
+await pause(400); // let the field take focus, or the first key is lost
 await page.keyboard.type(account.email, { delay: 25 });
 await sem("textbox", "Password").click();
+await pause(400);
 await page.keyboard.type(account.password, { delay: 25 });
 await pause(400);
 await sem("button", "Sign in").click();
-await waitText(/on screens today/, 30_000);
+await waitText(/on screens/, 30_000);
 await pause(800);
 mark("home");
 await shot("home");
@@ -113,18 +118,27 @@ await pause(9000);
 
 // --no-model: pipeline dry run with the app's hand-written fallback quests.
 if (!process.argv.includes("--no-model")) {
-  if (await page.getByText(/Download on Wi-Fi/).count()) {
+  if (await page.getByRole("button", { name: /Bring Twiga home/ }).count()) {
     mark("download");
-    await sem("button", "Download on Wi-Fi").click();
+    await sem("button", "Bring Twiga home").click();
   }
-  await waitText(/ready · on-device/, 600_000);
+  await waitText(/On this device · works offline|couldn't make it/, 600_000);
+  const failed = await page.evaluate(() =>
+    [...document.querySelectorAll("flt-semantics")].some((e) =>
+      /couldn't make it/.test((e.getAttribute("aria-label") ?? "") + (e.textContent ?? "")),
+    ),
+  );
+  if (failed) {
+    await page.screenshot({ path: join(out, "shot-failure.png") });
+    throw new Error("Model download failed — see demo/out/shot-failure.png");
+  }
 }
 mark("model-ready");
 await pause(1200);
 
 await sem("button", "Give me a quest").click();
 mark("generating");
-await waitText(/Written on-device by|Hand-written quest/, 180_000);
+await waitText(/From Twiga|A classic quest/, 180_000);
 mark("quest");
 await shot("quest");
 await pause(6500);
@@ -134,8 +148,8 @@ await context.setOffline(true);
 mark("offline");
 await pause(1200);
 await sem("button", "Another one").click();
-await page.getByText(/thinking, on your phone/).waitFor({ timeout: 10_000 }).catch(() => {});
-await waitText(/Written on-device by|Hand-written quest/, 180_000);
+await page.waitForTimeout(500);
+await waitText(/From Twiga|A classic quest/, 180_000);
 mark("quest-offline");
 await shot("quest-offline");
 await pause(6000);
@@ -157,16 +171,29 @@ mark("later");
 await shot("later");
 await pause(1500);
 await sem("textbox", "What did you notice").click();
+await pause(500);
 await page.keyboard.type("Counted 9 birds. My eyes feel lighter.", { delay: 45 });
 await pause(800);
 await sem("button", "back inside").click();
-await waitText(/Logged to SavannaTime|sync when you are back/);
+await waitText(/Logged to SavannaTime|Saved on this device/);
 mark("logged");
 await pause(2500);
-await waitText(/outside so far/);
+await waitText(/Today outside/);
 mark("home-after");
 await shot("home-after");
-await pause(5000);
+await pause(3000);
+await page.mouse.wheel(0, 900);
+await pause(3500);
+await page.mouse.wheel(0, -900);
+await pause(800);
+
+// Theme cycles system → light → dark.
+mark("dark");
+await page.getByRole("button", { name: /Theme:/ }).click();
+await pause(300);
+await page.getByRole("button", { name: /Theme:/ }).click();
+await pause(3500);
+await shot("dark");
 mark("end");
 
 await cdp.send("Page.stopScreencast");
@@ -174,4 +201,4 @@ await pause(300);
 writeFileSync(join(out, "frames.json"), JSON.stringify(frames));
 writeFileSync(join(out, "marks.json"), JSON.stringify(marks, null, 2));
 console.log(`${frames.length} frames, ${marks.at(-1).t.toFixed(1)}s`);
-await browser.close();
+await context.close();

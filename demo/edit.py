@@ -174,12 +174,12 @@ plan = [
         "10 minutes outside per hour on screens. Distracting time counts 1.5×. Capped at an hour a day."), "02-debt"),
 ]
 if "download" in marks:
-    plan.append(("download", "model-ready", 3.0, ("03 · One-time setup", "Download Gemma 3 1B once",
-        "About 550 MB of open weights. After that, every quest is generated locally."), None))
+    plan.append(("download", "model-ready", 3.0, ("03 · One-time setup", "Bring Twiga home",
+        "Twiga is under a gigabyte of open weights, fetched once. After that, every quest is made on the device."), None))
 plan += [
-    ("generating", "quest", 3.5, ("03 · On-device AI", "Gemma writes a quest",
-        "Gemma 3 1B runs locally — WebGPU in this browser, LiteRT on a phone."), "03-gemma"),
-    ("quest", "offline", None, ("03 · On-device AI", "Specific. Sensory. Outside.",
+    ("generating", "quest", 3.5, ("03 · Meet Twiga", "Twiga plans a quest",
+        "Twiga is Gemma 3 1B, an open-weight model running locally: WebGPU in this browser, LiteRT on a phone."), "03-gemma"),
+    ("quest", "offline", None, ("03 · Meet Twiga", "Specific. Sensory. Outside.",
         "The prompt holds aggregates only: totals, the productivity mix, top app names."), None),
     ("offline", "quest-offline", 3.5, ("04 · Offline", "Network off",
         "No API, no vendor, no key. Your day never leaves the device for the AI."), "04-offline"),
@@ -189,8 +189,10 @@ plan += [
         "A deliberately boring timer. The app's job now is to be ignored."), "05-break"),
     ("later", "logged", None, ("05 · Go outside", "21 minutes later",
         "The page clock is shifted for the video. The break that gets logged is a real 21-minute interval."), None),
-    ("logged", "end", None, ("06 · Pay it back", "Logged to SavannaTime",
-        "A time entry with a client-generated id: queued on the phone, synced exactly once. The debt goes down."), "06-logged"),
+    ("logged", "dark", None, ("06 · Pay it back", "Logged to SavannaTime",
+        "A time entry with a client-generated id: queued on the phone, synced exactly once. The debt goes down and the week fills in."), "06-logged"),
+    ("dark", "end", None, ("07 · Your way", "Light or dark",
+        "Follows your system, or pick one. SavannaTime's own palette, in green."), None),
 ]
 NOTES = {"later": "TIME-LAPSE"}
 
@@ -259,7 +261,7 @@ def main() -> None:
         eyebrow, head, body = cap
         note = NOTES.get(m0, "")
         if speed > 1.05:
-            note = f"SPED UP {speed:.0f}×  ·  {natural:.0f} S REAL TIME"
+            note = f"SPED UP {speed:.1f}×  ·  {natural:.0f}s IN REAL TIME".replace(".0×", "×")
         cap_png = BUILD / f"cap{i:02d}.png"
         caption(eyebrow, head, body, note).save(cap_png)
         seg = BUILD / f"s{i:02d}.mp4"

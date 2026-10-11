@@ -4,8 +4,8 @@ published: false
 tags: devchallenge, hf26challenge, flutter, gemma
 ---
 
-<!-- Before publishing: replace every TODO, paste the demo video URL, and fill in the
-     "I took it outside" section from a real break. Delete this comment. -->
+<!-- Before publishing: upload demo/out/savanna-grass-demo.mp4 to YouTube and paste the link
+     under Demo, fill in "I Took It Outside" from a real break, then delete this comment. -->
 
 *This is a submission for the [Hacktoberfest Open-Source AI Challenge — Week 1: Touch Grass](https://dev.to/devteam/join-the-hacktoberfest-open-source-ai-challenge-week-1-touch-grass-2450-in-prizes-across-17-4pom).*
 
@@ -16,27 +16,34 @@ good at telling me I spent five hours in VS Code and forty minutes on YouTube. I
 made me stand up.
 
 **Savanna Grass** is the missing half: a Flutter app that reads today's screen time from
-SavannaTime, turns it into **grass debt**, and pays that debt off with small outdoor quests,
-written on the phone by **Gemma 3 1B**.
+SavannaTime, turns it into **grass debt**, and pays that debt off with small outdoor quests
+planned by **Twiga** 🦒 (Swahili for giraffe, the one who sees over the grass). Twiga is
+**Gemma 3 1B**, running on the device.
 
 - **Grass debt.** Every hour on screens owes 10 minutes outside. Distracting time counts 1.5×.
   Capped at an hour a day, because the goal is a walk, not guilt.
-- **A quest, not a nag.** "Go for a walk" is easy to ignore. "Find five shades of green and touch
-  the softest one" is not. Gemma writes one from the shape of your day: how long, how distracting,
-  which apps, the time, and whether you're at home, at work or out.
+- **A quest, not a nag.** "Go for a walk" is easy to ignore. "Step outside and count the
+  constellations you can find" is not. Twiga writes one from the shape of your day: how long, how
+  distracting, which apps, the time, whether it's dark, and whether you're at home, at work or out.
 - **Then the phone gets boring.** A big timer, one line of instructions, and "phone in pocket,
   eyes up." When you come back you can jot down what you noticed, and the break is logged to
   SavannaTime, where it sits next to your screen time and pays off the debt.
+
+- **A week you can see.** A 7-day chart of time outside, a streak, and today's breaks with the
+  notes you left. Light and dark mode, in SavannaTime's own palette with its green as the accent.
 
 It's for people like me: developers and students whose day disappears into a monitor, and who
 already have a tracker telling them so.
 
 ## Demo
 
-TODO: embed the video. Suggested 60-second cut: the debt ring at 40 min → tap "Give me a quest" →
-Gemma's quest appears with "Written on-device by Gemma 3 1B" → **turn on airplane mode** → another
-quest still generates → walk out the door → back → the ring fills and the entry appears on the
-SavannaTime web dashboard.
+TODO: {% embed https://youtu.be/YOUR_VIDEO_ID %}
+
+80 seconds, nothing mocked: the real app against a local SavannaTime server with a seeded test
+account. Twiga writes two quests, the second with the **network switched off**. The break's 21
+minutes are a clearly labelled time-lapse; everything else is real time or marked as sped up.
+Narration is Piper, an open-source offline TTS, and the music bed is synthesised in code, so even
+the video is built from open tools (`demo/` in the repo rebuilds it end to end).
 
 ## Code
 
@@ -45,22 +52,26 @@ SavannaTime web dashboard.
 ## How I Built It
 
 **Flutter + `flutter_gemma`.** Gemma 3 1B instruction-tuned, int4, as a MediaPipe `.task` file
-(~550 MB). It downloads once over Wi-Fi, then runs on the phone's GPU through LiteRT, falling back
-to the CPU on phones without a GPU delegate.
+(~555 MB). It downloads once over Wi-Fi, then runs on the phone's GPU through LiteRT, falling back
+to the CPU on phones without a GPU delegate. The same app runs in Chrome on WebGPU, with MediaPipe
+vendored into the build, not loaded from a CDN, so it still works offline.
 
-**Prompting a 1B model.** My first prompt asked for JSON. A 1B model sometimes produces JSON and
-often doesn't. Labelled lines work much better:
+**Prompting a 1B model, the hard way.** Four lessons, each learned from a failed take:
 
-```
-TITLE: <a fun title, at most 6 words>
-MINUTES: <a number>
-STEPS: <one or two sentences saying exactly what to do>
-WHY: <one short sentence linking it to their screen time today>
-```
+1. **Labelled lines beat JSON.** `TITLE: / STEPS: / WHY:` comes back far more reliably than JSON
+   does from a model this small.
+2. **Never give it an example.** I added one worked example to the prompt and Gemma returned it
+   word for word, six times out of six. Placeholders only.
+3. **The chat template is not optional.** MediaPipe applies Gemma's template on Android but not
+   in the browser. Without `<start_of_turn>` markers the model spent 43 seconds printing empty
+   code fences. With them: 3 seconds and a real quest. I also pre-fill the answer with `TITLE:` so
+   it can only continue in format.
+4. **The model writes words, the app owns numbers.** It ignored "30 minutes" and asked for 60. Now
+   the duration is always the app's figure from the debt, and if Twiga forgets the WHY line it is
+   filled from real data: "5h 46m on screens today. This pays back 30 of your 60 minutes."
 
-The parser is tolerant on purpose. It accepts `**TITLE:**`, chatter like "Sure! Here's your
-quest:", and "15 minutes" where a number should be. After dark the prompt asks for a safe, lit
-spot: a doorstep, a balcony, a lit street.
+The parser stays forgiving anyway: numbered steps, an unlabelled first line as the title, ALL-CAPS
+titles calmed down. After dark the prompt asks for somewhere close, safe and lit, and no sunshine.
 
 **The model is never load-bearing.** The debt is a plain formula a person can check by hand.
 Gemma only writes the invitation. If the model isn't downloaded yet, or its answer doesn't parse,
@@ -72,8 +83,12 @@ the app shows a hand-written quest and says so. You always get sent outside.
 the desktop tracker uses for offline sync, so a break logged with no signal syncs later, and a
 retry after a dropped connection can never count the same walk twice.
 
-TODO: one honest paragraph on what was hard (first model download, GPU vs CPU speed on your
-phone, a funny quest Gemma wrote).
+**What else was hard.** Browser storage: a fresh browser profile has too little quota for a 700 MB
+model, and reading it back as a Blob more than once exhausted Chrome's blob store ("Failed to
+fetch"). Streaming the weights straight from the Cache API into MediaPipe fixed both. And
+`flutter_gemma`'s web session never clears its prompt, so the second quest crashed the graph. The
+fix was a thin engine of my own that loads Gemma once and makes each quest a stateless call: the
+second quest dropped from 65 seconds to about 5, offline.
 
 ## Why Open Innovation Matters Here
 
@@ -101,5 +116,5 @@ typed), how long you stayed, and one photo.
 
 ## Prize Categories
 
-**Gemma**: Gemma 3 1B is the core of the app, running fully on-device through `flutter_gemma`
-(MediaPipe / LiteRT).
+**Gemma**: Gemma 3 1B is Twiga, the core of the app, running fully on-device: LiteRT on Android
+via `flutter_gemma`, and MediaPipe on WebGPU in the browser.

@@ -67,7 +67,7 @@ void main() {
     expect(d.totalSeconds, 60);
   });
 
-  test('outdoor seconds only count finished entries this app wrote', () async {
+  test('outdoor breaks: only finished entries this app wrote, title and note split', () async {
     final api = SavannaApi(
       baseUrl: 'https://api.example.com',
       // Bytes with no charset, as a server may send them: the client must
@@ -75,7 +75,7 @@ void main() {
       client: MockClient((_) async => http.Response.bytes(
             utf8.encode(jsonEncode({
               'entries': [
-                {'description': '$outdoorMarker · Sky', 'startTime': '2026-10-11T10:00:00Z', 'endTime': '2026-10-11T10:12:00Z'},
+                {'description': '$outdoorMarker · Sky — two hawks', 'startTime': '2026-10-11T10:00:00Z', 'endTime': '2026-10-11T10:12:00Z'},
                 {'description': '$outdoorMarker · Running', 'startTime': '2026-10-11T11:00:00Z', 'endTime': null},
                 {'description': 'Client call', 'startTime': '2026-10-11T12:00:00Z', 'endTime': '2026-10-11T13:00:00Z'},
                 {'description': null, 'startTime': '2026-10-11T14:00:00Z', 'endTime': '2026-10-11T14:10:00Z'},
@@ -85,7 +85,11 @@ void main() {
             headers: {'content-type': 'application/json'},
           )),
     );
-    expect(await api.outdoorSecondsToday(DateTime(2026, 10, 11)), 12 * 60);
+    final breaks = await api.outdoorBreaks(DateTime(2026, 10, 5), DateTime(2026, 10, 11));
+    expect(breaks, hasLength(1));
+    expect(breaks.single.seconds, 12 * 60);
+    expect(breaks.single.title, 'Sky');
+    expect(breaks.single.note, 'two hawks');
   });
 
   test('a break is posted as a time entry with its client id', () async {

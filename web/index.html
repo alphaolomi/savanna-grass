@@ -30,12 +30,16 @@
   <link rel="icon" type="image/png" href="favicon.png"/>
 
   <title>Savanna Grass</title>
-  <!-- MediaPipe GenAI: runs Gemma in the browser on WebGPU (flutter_gemma web backend). -->
+  <!-- Cache API helpers flutter_gemma calls on web to store the model (not shipped in the package). -->
+  <script src="vendor/flutter_gemma_cache_api.js"></script>
+  <!-- MediaPipe GenAI, served from this app (no CDN): runs the model in the browser on WebGPU. -->
   <script type="module">
-    import { FilesetResolver, LlmInference } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.27";
+    import { FilesetResolver, LlmInference } from "./mediapipe/genai_bundle.mjs"; // tool/vendor_mediapipe.sh
     window.FilesetResolver = FilesetResolver;
     window.LlmInference = LlmInference;
   </script>
+  <!-- Creates the in-browser model engine from the cached weights (lib/ai/web_llm.dart). -->
+  <script src="vendor/savanna_llm.js"></script>
   <link rel="manifest" href="manifest.json">
 </head>
 <body>

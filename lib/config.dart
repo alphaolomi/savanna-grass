@@ -28,5 +28,11 @@ abstract final class Config {
   /// licence. Empty means "try without one" (works for ungated mirrors).
   static const hfToken = String.fromEnvironment('HF_TOKEN');
 
-  static const modelLabel = 'Gemma 3 1B';
+  /// Download size shown to the person, in MB: the browser build of the model
+  /// is larger than the mobile one.
+  static const modelSizeMb = kIsWeb ? 700 : 555;
+
+  /// `--dart-define=DEBUG_QUESTS=true` prints the model's raw answers to the
+  /// console. Off by default: a quest is built from someone's day.
+  static const debugQuests = bool.fromEnvironment('DEBUG_QUESTS');
 }

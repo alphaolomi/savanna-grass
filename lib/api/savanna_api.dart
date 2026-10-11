@@ -2,11 +2,21 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../domain/outdoor_log.dart';
 import '../domain/screen_day.dart';
 
 /// Every time entry this app writes starts with this, so outdoor time is
 /// recognisable in SavannaTime's web dashboard and countable here.
 const outdoorMarker = '🌿 Touch grass';
+
+/// Splits `🌿 Touch grass · <title> — <note>` back into title and note.
+(String, String?) parseOutdoorDescription(String desc) {
+  var rest = desc.substring(outdoorMarker.length).trim();
+  if (rest.startsWith('·')) rest = rest.substring(1).trim();
+  final cut = rest.indexOf(' — ');
+  if (cut < 0) return (rest.isEmpty ? 'Outside' : rest, null);
+  return (rest.substring(0, cut).trim(), rest.substring(cut + 3).trim());
+}
 
 class ApiException implements Exception {
   const ApiException(this.status, this.message, [this.code]);
@@ -106,20 +116,24 @@ class SavannaApi {
     return ScreenDay.fromSummaryJson(json['summary'] as Map<String, dynamic>);
   }
 
-  /// Seconds already spent outside today, summed from this app's entries.
-  Future<int> outdoorSecondsToday(DateTime now) async {
-    final d = _date(now);
-    final json = await _send('GET', 'time-entries?from=$d&to=$d');
-    var total = 0;
+  /// Finished outdoor breaks this app logged between two local dates,
+  /// inclusive. Other time entries in SavannaTime are ignored.
+  Future<List<LoggedBreak>> outdoorBreaks(DateTime from, DateTime to) async {
+    final json = await _send('GET', 'time-entries?from=${_date(from)}&to=${_date(to)}');
+    final breaks = <LoggedBreak>[];
     for (final e in (json['entries'] as List).cast<Map<String, dynamic>>()) {
       final desc = e['description'] as String? ?? '';
       final end = e['endTime'] as String?;
       if (!desc.startsWith(outdoorMarker) || end == null) continue;
-      total += DateTime.parse(end)
-          .difference(DateTime.parse(e['startTime'] as String))
-          .inSeconds;
+      final (title, note) = parseOutdoorDescription(desc);
+      breaks.add(LoggedBreak(
+        start: DateTime.parse(e['startTime'] as String).toLocal(),
+        end: DateTime.parse(end).toLocal(),
+        title: title,
+        note: note,
+      ));
     }
-    return total;
+    return breaks;
   }
 
   Future<void> logOutdoorBreak(OutdoorBreak b) => _send('POST', 'time-entries',

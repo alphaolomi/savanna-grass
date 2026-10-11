@@ -36,17 +36,16 @@ class SavannaGrassApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Savanna Grass',
-      debugShowCheckedModeBanner: false,
-      theme: savannaTheme(Brightness.light),
-      darkTheme: savannaTheme(Brightness.dark),
-      home: ListenableBuilder(
-        listenable: state,
-        builder: (context, _) => switch (state.auth) {
-          AuthStatus.unknown => const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
+    return ListenableBuilder(
+      listenable: state,
+      builder: (context, _) => MaterialApp(
+        title: 'Savanna Grass',
+        debugShowCheckedModeBanner: false,
+        theme: savannaTheme(Brightness.light),
+        darkTheme: savannaTheme(Brightness.dark),
+        themeMode: state.themeMode,
+        home: switch (state.auth) {
+          AuthStatus.unknown => const Scaffold(body: Center(child: CircularProgressIndicator())),
           AuthStatus.signedOut => LoginScreen(state: state),
           AuthStatus.signedIn => HomeScreen(state: state),
         },

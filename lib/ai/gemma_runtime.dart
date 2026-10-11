@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_gemma/flutter_gemma.dart';
 
 import '../config.dart';
+import 'web_llm_stub.dart' if (dart.library.js_interop) 'web_llm.dart';
 
 /// The open-weight model, running entirely on this phone.
 ///
@@ -11,6 +13,7 @@ import '../config.dart';
 /// vendor, and a closed API would break it.
 class GemmaRuntime {
   InferenceModel? _model;
+  final _web = WebLlm();
 
   String get modelId => Uri.parse(Config.modelUrl).pathSegments.last;
 
@@ -31,6 +34,9 @@ class GemmaRuntime {
   }
 
   Future<String> generate(String prompt) async {
+    // In the browser the engine is driven directly (see web_llm.dart); the
+    // plugin's web session cannot be reused between quests.
+    if (kIsWeb) return _web.generate(prompt, modelUrl: Config.modelUrl, prefill: 'TITLE:');
     _model ??= await _load();
     final session = await _model!.createSession(
       temperature: 0.9,
@@ -63,6 +69,7 @@ class GemmaRuntime {
   }
 
   Future<void> close() async {
+    _web.close();
     await _model?.close();
     _model = null;
   }

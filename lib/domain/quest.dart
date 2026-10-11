@@ -1,3 +1,4 @@
+import '../persona.dart';
 import 'grass_debt.dart';
 import 'screen_day.dart';
 
@@ -40,12 +41,23 @@ class QuestContext {
     required this.debt,
     required this.now,
     required this.setting,
+    this.variety = 0,
   });
 
   final ScreenDay day;
   final GrassDebt debt;
   final DateTime now;
   final Setting setting;
+
+  /// Which sense the quest leans on; rotates so "another one" differs.
+  final int variety;
+
+  static const focuses = [
+    'sounds', 'textures you can touch', 'the sky', 'colours',
+    'smells', 'things that move', 'plants and trees', 'light and shadow',
+  ];
+
+  String get focus => focuses[(variety + now.minute) % focuses.length];
 
   /// Minutes the quest should take: today's remaining debt, kept inside a range
   /// a person will actually say yes to.
@@ -75,67 +87,108 @@ const _months = [
   'August', 'September', 'October', 'November', 'December',
 ];
 
-/// The prompt for Gemma 3 1B. Small models follow a rigid line format far more
-/// reliably than JSON, so the answer is four labelled lines.
+/// The prompt for the on-device model (a 1B model, so short and firm).
+///
+/// The model writes words only. How long the quest lasts is the app's number
+/// — today's remaining grass debt — exactly like the debt itself: a formula
+/// a person can check, never a model's guess.
 String buildQuestPrompt(QuestContext c) {
-  final apps = c.day.topApps
-      .take(3)
-      .map((a) => '${a.name} (${formatDuration(a.seconds)})')
-      .join(', ');
-  final safety = c.isDark
-      ? 'It is dark outside, so keep it close, lit and safe — a balcony, doorstep, or well-lit street.'
-      : 'It is daylight.';
+  final apps = c.day.topApps.take(3).map((a) => a.name).join(', ');
+  final when = '${_article(_months[c.now.month - 1])} ${_months[c.now.month - 1]} ${c.partOfDay}';
+  final light = c.isDark ? 'It is dark outside.' : 'It is daylight.';
   return '''
-You are a warm, playful coach who gets people off their screens and outside.
-Write ONE small outdoor quest for this person.
+${Twiga.promptIntro}
 
-Facts about their day:
-- Screen time today: ${formatDuration(c.day.totalSeconds)}
-- Of that, distracting: ${formatDuration(c.day.distractingSeconds)}
-- Most used apps: ${apps.isEmpty ? 'unknown' : apps}
-- It is a ${_months[c.now.month - 1]} ${c.partOfDay}. They are ${c.setting.phrase}.
-- $safety
-- The quest must take about ${c.targetMinutes} minutes.
+Write ONE small outdoor quest for this person. Facts:
+- Today: ${formatDuration(c.day.totalSeconds)} on screens, ${formatDuration(c.day.distractingSeconds)} of it distracting.${apps.isEmpty ? '' : ' Most used: $apps.'}
+- It is $when. $light They are ${c.setting.phrase}.
+- The quest takes about ${c.targetMinutes} minutes and is built around ${c.focus}.
 
-Rules: it must happen outdoors, need no equipment, no purchases and no phone use.
-Make it specific and sensory (something to notice, find, or count).
+Rules:
+- It happens outdoors${c.isDark ? ', close by, somewhere safe and lit, like a doorstep, balcony or lit street' : ''}.
+- No equipment, no purchases, no phone.
+- Specific and sensory: something to notice, find, or count.${c.isDark ? '\n- It is night: do not mention the sun or sunshine.' : ''}
 
-Answer with exactly these four lines and nothing else:
-TITLE: <a fun title, at most 6 words>
-MINUTES: <a number>
+Answer in exactly three lines, nothing else:
+TITLE: <a playful title, at most 6 words>
 STEPS: <one or two sentences saying exactly what to do>
-WHY: <one short sentence linking it to their screen time today>''';
+WHY: <one warm sentence linking it to their screen time today>''';
 }
 
-final _line = RegExp(r'^\s*\**\s*(TITLE|MINUTES|STEPS|WHY)\s*\**\s*:\s*(.+)$',
-    caseSensitive: false, multiLine: true);
+String _article(String word) => 'AEIOU'.contains(word[0]) ? 'an' : 'a';
+
+final _label = RegExp(r'^\s*\**\s*(TITLE|MINUTES|STEPS|WHY)\s*\**\s*:\s*(.*)$',
+    caseSensitive: false);
+final _listMarker = RegExp(r'^\s*(?:[-*•]|\d+[.)])\s+');
 
 /// Parses the model's answer. Returns null when the output is not usable, so
 /// the caller falls back to a template rather than showing half a quest.
-Quest? parseQuest(String raw, {required int fallbackMinutes}) {
-  final fields = <String, String>{};
-  for (final m in _line.allMatches(raw)) {
-    fields.putIfAbsent(
-      m.group(1)!.toUpperCase(),
-      () => m.group(2)!.replaceAll('**', '').trim(),
-    );
+///
+/// Small models are sloppy with format, so this is forgiving: a value may run
+/// over several lines (STEPS as a numbered list), an unlabelled first line is
+/// taken as the title, and an ALL-CAPS title is calmed down. A MINUTES line is
+/// read past and ignored — the duration is always [minutes], the app's number.
+Quest? parseQuest(String raw, {required int minutes}) {
+  final fields = <String, List<String>>{};
+  List<String>? current;
+  String? unlabelledFirst;
+  for (final line in raw.replaceAll('```', '').split('\n')) {
+    final m = _label.firstMatch(line);
+    if (m != null) {
+      final key = m.group(1)!.toUpperCase();
+      // The first answer wins: a model that repeats the format is restarting.
+      current = fields.containsKey(key) ? null : (fields[key] = []);
+      final rest = m.group(2)!;
+      if (rest.trim().isNotEmpty) current?.add(rest);
+    } else if (current != null && line.trim().isNotEmpty) {
+      current.add(line);
+    } else if (fields.isEmpty && unlabelledFirst == null && line.trim().isNotEmpty) {
+      unlabelledFirst = line;
+    }
   }
-  final title = fields['TITLE'];
-  final steps = fields['STEPS'];
-  if (title == null || title.isEmpty || steps == null || steps.isEmpty) {
-    return null;
+  String? field(String k, {int maxParts = 99}) {
+    final parts = fields[k]
+        ?.map((l) => l.replaceAll('**', '').replaceFirst(_listMarker, '').trim())
+        .where((l) => l.isNotEmpty)
+        .take(maxParts)
+        .toList();
+    return (parts == null || parts.isEmpty) ? null : parts.join(' ');
   }
-  final minutes = int.tryParse(
-        RegExp(r'\d+').firstMatch(fields['MINUTES'] ?? '')?.group(0) ?? '',
-      ) ??
-      fallbackMinutes;
+
+  final title = field('TITLE') ?? unlabelledFirst?.replaceAll('**', '').replaceAll('#', '').trim();
+  // Two steps are a quest; five are a chore list.
+  final steps = field('STEPS', maxParts: 2)
+      // "corner, 2. Count the leaves, 3. Feel the air" → plain prose.
+      ?.replaceAll(RegExp(r'(?<=[,;]\s)\d+[.)]\s+'), '');
+  if (title == null || title.isEmpty || steps == null) return null;
+  // A model that echoes the format back has not written a quest.
+  if ('$title $steps'.contains('<') && '$title $steps'.contains('>')) return null;
   return Quest(
-    title: _trimQuotes(title),
-    minutes: minutes.clamp(3, 60),
+    title: _calm(_trimQuotes(title)),
+    minutes: minutes,
     steps: steps,
-    why: fields['WHY'] ?? '',
+    why: field('WHY') ?? '',
     source: QuestSource.gemma,
   );
+}
+
+/// "THE SUN-DRENCHED WALK" → "The Sun-Drenched Walk". Mixed case is left alone.
+String _calm(String title) {
+  if (title != title.toUpperCase() || title == title.toLowerCase()) return title;
+  return title.toLowerCase().splitMapJoin(
+        RegExp(r"[a-z][a-z']*"),
+        onMatch: (m) => m[0]![0].toUpperCase() + m[0]!.substring(1),
+      );
+}
+
+/// Twiga's line when the model leaves WHY out: built from the day's real
+/// numbers, so it is never wrong.
+String twigaWhy(QuestContext c) {
+  final screens = formatDuration(c.day.totalSeconds);
+  if (c.debt.owedMinutes == 0) return 'A head start before the screens win today.';
+  if (c.debt.isPaid) return "Debt's paid — this one is just for you.";
+  final pays = c.targetMinutes.clamp(0, c.debt.remainingMinutes);
+  return '$screens on screens today. This pays back $pays of your ${c.debt.remainingMinutes} minutes.';
 }
 
 String _trimQuotes(String s) => s.replaceAll(RegExp(r'''^["'“]+|["'”]+$'''), '');
