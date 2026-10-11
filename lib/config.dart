@@ -19,8 +19,11 @@ abstract final class Config {
     defaultValue: kIsWeb ? _gemma1bWeb : _gemma1bMobile,
   );
 
+  /// Mirrored on this repo's GitHub Releases (with the Gemma Terms of Use) so
+  /// the public app needs no Hugging Face token. Same file as
+  /// litert-community/Gemma3-1B-IT's gemma3-1b-it-int4.task.
   static const _gemma1bMobile =
-      'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.task';
+      'https://github.com/alphaolomi/savanna-grass/releases/download/model-gemma3-1b/gemma3-1b-it-int4.task';
   static const _gemma1bWeb =
       'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4-web.task';
 

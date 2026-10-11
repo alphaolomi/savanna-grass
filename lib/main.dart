@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show LicenseEntryWithLineBreaks, LicenseRegistry, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -17,6 +17,15 @@ Future<void> main() async {
   // Flutter web paints to a canvas; the semantics tree is what screen readers
   // (and the demo recorder) see. Off by default on web, so turn it on.
   if (kIsWeb) SemanticsBinding.instance.ensureSemantics();
+  // Twiga is Gemma 3 1B; redistributing it means passing its terms along.
+  LicenseRegistry.addLicense(() => Stream.value(const LicenseEntryWithLineBreaks(
+        ['Gemma 3 1B (Twiga)'],
+        'Gemma is provided under and subject to the Gemma Terms of Use found at '
+        'ai.google.dev/gemma/terms. Use of Gemma is subject to the Gemma Prohibited Use '
+        'Policy at ai.google.dev/gemma/prohibited_use_policy.\n\n'
+        'Savanna Grass downloads an unmodified copy of gemma3-1b-it-int4.task '
+        '(litert-community/Gemma3-1B-IT) and runs it on this device only.',
+      )));
   await FlutterGemma.initialize(
     huggingFaceToken: Config.hfToken.isEmpty ? null : Config.hfToken,
   );

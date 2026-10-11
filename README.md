@@ -21,6 +21,8 @@ Grass turns that into **grass debt** and pays it back one small outdoor quest at
   logged to SavannaTime as a time entry (`🌿 Touch grass · …`), so it shows up next to your
   screen time on the web dashboard and pays off the debt.
 
+**[Download for Android](https://alphaolomi.github.io/savanna-grass/)** · [Demo video](https://youtu.be/zt68LUsdivA) · [Releases](https://github.com/alphaolomi/savanna-grass/releases)
+
 Built for the [DEV Hacktoberfest Open-Source AI Challenge — Week 1: Touch Grass](https://dev.to/devteam/join-the-hacktoberfest-open-source-ai-challenge-week-1-touch-grass-2450-in-prizes-across-17-4pom).
 
 ## Why on-device, open-weight
@@ -134,6 +136,23 @@ Chromium with Playwright and captures frames over the DevTools screencast (the b
 are a page-clock time-lapse, labelled as such); narration is [Piper](https://github.com/rhasspy/piper)
 (open-source, offline TTS); `music.py` synthesises the music bed; `edit.py` composes the 1080p cut
 with ffmpeg.
+
+## Releasing
+
+The website in `site/` deploys to GitHub Pages on every push that touches it
+(`.github/workflows/pages.yml`). Its download buttons find the newest release carrying
+`savanna-grass.apk` (the model mirror is a release too, so "latest" is not enough).
+
+- **The model** is mirrored once, on its own release tag `model-gemma3-1b`, with the Gemma terms —
+  so the public app needs no Hugging Face token and app releases never re-upload 555 MB.
+- **The APK** is signed with a release key kept outside the repo: `android/key.properties`
+  (gitignored) points at the keystore. Without it, release builds fall back to the debug key.
+
+```bash
+flutter build apk --release
+cp build/app/outputs/flutter-apk/app-release.apk savanna-grass.apk
+gh release create v1.0.1 savanna-grass.apk --title "Savanna Grass 1.0.1" --notes "…"
+```
 
 ## Licence
 

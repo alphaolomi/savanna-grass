@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Savanna Grass — screen time, turned into reasons to go outside</title>
+  <meta name="description" content="A free Android companion to SavannaTime. Twiga, an AI guide that runs on your phone, turns your screen time into small outdoor quests. Your day never leaves the device for the AI.">
+  <meta name="theme-color" content="#2F6F5E" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="Savanna Grass">
+  <meta property="og:description" content="Your screen time, turned into reasons to go outside — planned by Twiga, an AI guide that runs on your phone.">
+  <meta property="og:image" content="https://alphaolomi.github.io/savanna-grass/assets/og.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦒</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="#top"><span class="brand-mark">🦒</span> Savanna Grass</a>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#install">Install</a>
+      <a class="nav-gh" href="https://github.com/alphaolomi/savanna-grass">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">A companion to SavannaTime</p>
+        <h1>Your screen time, turned into reasons to go outside.</h1>
+        <p class="lede">
+          Savanna Grass reads your day from SavannaTime and turns it into <strong>grass debt</strong>.
+          Then <strong>Twiga</strong> 🦒, an AI guide that lives on your phone, plans a small outdoor
+          quest to pay it back. Your screen time never leaves the device for the AI.
+        </p>
+        <div class="cta">
+          <a class="btn btn-primary" id="download" href="https://github.com/alphaolomi/savanna-grass/releases/download/v1.0.0/savanna-grass.apk">
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 19h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download for Android
+          </a>
+          <a class="btn btn-ghost" href="#demo">▶ Watch the demo</a>
+        </div>
+        <p class="fine" id="release-meta">Free · 54 MB · Android 7.0+ (64-bit) · signed APK from GitHub Releases</p>
+      </div>
+      <figure class="hero-phone">
+        <img src="assets/home-quest.webp" width="412" height="870" alt="Savanna Grass home screen: 60 minutes of grass debt and a quest from Twiga">
+      </figure>
+    </section>
+
+    <section class="how" id="how">
+      <h2>How it works</h2>
+      <div class="cards">
+        <article class="card">
+          <span class="step">1</span>
+          <h3>Screen time becomes grass debt</h3>
+          <p>Every hour on screens owes 10 minutes outside. Distracting time counts 1.5×. Capped at an hour a day. A plain formula you can check by hand.</p>
+        </article>
+        <article class="card">
+          <span class="step">2</span>
+          <h3>Twiga plans a quest</h3>
+          <p>Not "go for a walk". Something specific and sensory, built from the shape of your day, the time, whether it's dark, and where you are.</p>
+        </article>
+        <article class="card">
+          <span class="step">3</span>
+          <h3>Go outside, pay it back</h3>
+          <p>A calm timer, phone in pocket. When you're back, the break is logged to SavannaTime, the debt goes down and your week fills in.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="demo" id="demo">
+      <h2>See it in 80 seconds</h2>
+      <div class="video">
+        <iframe src="https://www.youtube-nocookie.com/embed/zt68LUsdivA" title="Savanna Grass demo" loading="lazy"
+          allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </section>
+
+    <section class="gallery" aria-label="Screens">
+      <figure><img src="assets/home-after.webp" width="412" height="870" loading="lazy" alt="Debt going down after a break, with the week chart and streak"><figcaption>Your week outside</figcaption></figure>
+      <figure><img src="assets/break.webp" width="412" height="870" loading="lazy" alt="The break timer: phone in pocket, eyes up"><figcaption>Phone in pocket</figcaption></figure>
+      <figure><img src="assets/dark.webp" width="412" height="870" loading="lazy" alt="Dark mode"><figcaption>Light or dark</figcaption></figure>
+    </section>
+
+    <section class="privacy" id="privacy">
+      <div>
+        <h2>Twiga lives on your phone</h2>
+        <p>
+          SavannaTime has one rule it won't bend: <strong>no activity data ever reaches an external AI vendor.</strong>
+          Which apps you use, how long, at 2 a.m. That's intimate. So Twiga is an open-weight model that runs on the
+          device, offline.
+        </p>
+        <ul class="checks">
+          <li>Your day never leaves the phone for the AI. Only totals and top app <em>names</em> reach the prompt.</li>
+          <li>Works with no signal, which is exactly where you're going.</li>
+          <li>No API key in the app, no vendor, no bill per walk.</li>
+          <li>Open source, so you can read every line.</li>
+        </ul>
+      </div>
+      <table class="compare">
+        <thead><tr><th></th><th>Cloud AI</th><th>Twiga</th></tr></thead>
+        <tbody>
+          <tr><td>Your app usage leaves the phone</td><td>yes</td><td><strong>no</strong></td></tr>
+          <tr><td>Works offline</td><td>no</td><td><strong>yes</strong></td></tr>
+          <tr><td>API key or per-request cost</td><td>yes</td><td><strong>no</strong></td></tr>
+          <tr><td>Inspect or swap the model</td><td>no</td><td><strong>yes</strong></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="install" id="install">
+      <h2>Install on Android</h2>
+      <ol class="steps">
+        <li><strong>Download</strong> <a href="https://github.com/alphaolomi/savanna-grass/releases/download/v1.0.0/savanna-grass.apk">savanna-grass.apk</a> on your phone.</li>
+        <li><strong>Open it.</strong> If Android asks, allow your browser to <em>install unknown apps</em> (Settings → Apps → your browser → Install unknown apps). It's needed for any app installed outside Play.</li>
+        <li><strong>Install</strong>, then open <strong>Savanna Grass</strong>.</li>
+        <li><strong>Sign in</strong> with your SavannaTime account.</li>
+        <li><strong>Tap "Bring Twiga home"</strong> on Wi-Fi. It's a one-time ~555 MB download, and after that Twiga works offline.</li>
+      </ol>
+      <div class="req">
+        <div>
+          <h3>Requirements</h3>
+          <ul>
+            <li>Android 7.0 (API 24) or newer, 64-bit (arm64). Nearly every phone from the last eight years.</li>
+            <li>~1 GB free space for the app and Twiga</li>
+            <li>A recent phone. Twiga uses the GPU when it can and falls back to the CPU.</li>
+            <li>A <a href="https://savannatime.com">SavannaTime</a> account. Its desktop tracker measures the screen time this app sends you outside to pay back.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Verify the download</h3>
+          <p>Release APKs are signed with this certificate (SHA-256):</p>
+          <code class="fp">E4:D7:5A:20:19:CC:32:2D:BC:9E:78:62:A2:BF:C5:29:2F:72:00:68:1C:D6:E3:29:42:71:F2:ED:01:D0:43:4B</code>
+          <p class="fine">Check it with <code>apksigner verify --print-certs savanna-grass.apk</code>. Each release also lists the APK's SHA-256 checksum.</p>
+        </div>
+      </div>
+      <p class="fine">iPhone: not yet. The app is built with Flutter, so an iOS build is on the roadmap.</p>
+    </section>
+
+    <section class="faq">
+      <h2>Questions</h2>
+      <details><summary>Do I need SavannaTime?</summary><p>Yes. Savanna Grass reads your screen time from your SavannaTime account and logs your breaks back to it as time entries, so they show up on your SavannaTime dashboard.</p></details>
+      <details><summary>What does Twiga see?</summary><p>Today's totals, how much was distracting, your top three app names, the time of day, and whether you chose Home, Work or Out. No window titles, no URLs. It all stays on your phone.</p></details>
+      <details><summary>What is Twiga, technically?</summary><p>Twiga is <a href="https://huggingface.co/litert-community/Gemma3-1B-IT">Gemma 3 1B</a>, an open-weight model from Google, running locally through LiteRT/MediaPipe. The app downloads an unmodified copy, mirrored on this project's GitHub Releases.</p></details>
+      <details><summary>What if Twiga isn't downloaded yet?</summary><p>You get classic hand-written quests. The debt, the timer and the logging all work without the model.</p></details>
+      <details><summary>Does it work offline?</summary><p>Quests and the timer do. Finished breaks are saved on your phone and sync to SavannaTime when you're back online, exactly once.</p></details>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><strong>Savanna Grass</strong> · MIT licensed · <a href="https://github.com/alphaolomi/savanna-grass">Source on GitHub</a> · A companion to <a href="https://savannatime.com">SavannaTime</a></p>
+    <p class="fine">Gemma is provided under and subject to the <a href="https://ai.google.dev/gemma/terms">Gemma Terms of Use</a>, and its use is subject to the <a href="https://ai.google.dev/gemma/prohibited_use_policy">Gemma Prohibited Use Policy</a>.</p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

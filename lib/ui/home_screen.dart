@@ -100,10 +100,19 @@ class _Header extends StatelessWidget {
           onSelected: (v) {
             if (v == 'out') state.signOut();
             if (v == 'refresh') state.refresh();
+            if (v == 'about') {
+              showLicensePage(
+                context: context,
+                applicationName: 'Savanna Grass',
+                applicationLegalese: 'Companion to SavannaTime. MIT licensed.\n'
+                    'Twiga runs on this device; your screen time never leaves it for the AI.',
+              );
+            }
           },
           itemBuilder: (_) => [
             PopupMenuItem(enabled: false, child: Text(state.email ?? '')),
             const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
+            const PopupMenuItem(value: 'about', child: Text('About & licences')),
             const PopupMenuItem(value: 'out', child: Text('Sign out')),
           ],
           child: CircleAvatar(
