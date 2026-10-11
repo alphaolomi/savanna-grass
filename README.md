@@ -170,10 +170,16 @@ The website in `site/` deploys to GitHub Pages on every push that touches it
 - **The APK** is signed with a release key kept outside the repo: `android/key.properties`
   (gitignored) points at the keystore. Without it, release builds fall back to the debug key.
 
+Release notes live in `docs/releases/vX.Y.Z.md`, reviewed in the release PR with the version bump
+(`pubspec.yaml`) and the site's fallback download link. Merge that PR, then publish **straight away**
+from the merged `main`: the site deploys on merge, and its fallback link points at the new tag.
+
 ```bash
+git checkout main && git pull
 flutter build apk --release
 cp build/app/outputs/flutter-apk/app-release.apk savanna-grass.apk
-gh release create v1.0.1 savanna-grass.apk --title "Savanna Grass 1.0.1" --notes "…"
+sha256sum savanna-grass.apk > SHA256SUMS.txt
+gh release create v1.1.0 savanna-grass.apk SHA256SUMS.txt --target main --prerelease   --title "Savanna Grass 1.1.0" --notes-file docs/releases/v1.1.0.md
 ```
 
 ## Licence
