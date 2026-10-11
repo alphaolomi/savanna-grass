@@ -5,7 +5,7 @@ import '../config.dart';
 import '../domain/outdoor_log.dart';
 import '../domain/quest.dart';
 import '../persona.dart';
-import 'reminders_sheet.dart';
+import 'profile_screen.dart';
 import 'theme.dart';
 import 'widgets.dart';
 
@@ -82,7 +82,8 @@ class _Header extends StatelessWidget {
       ThemeMode.light => (Icons.light_mode_outlined, 'Theme: light'),
       ThemeMode.dark => (Icons.dark_mode_outlined, 'Theme: dark'),
     };
-    final initial = (state.email ?? '?').substring(0, 1).toUpperCase();
+    final initial = state.profile?.initial ?? (state.email ?? '?').substring(0, 1).toUpperCase();
+    final first = state.profile?.name?.split(' ').first;
     return Row(
       children: [
         const BrandMark(size: 38),
@@ -91,39 +92,24 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_greeting, style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+              Text(first == null ? _greeting : '$_greeting, $first', style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant)),
               Text('Savanna Grass', style: t.textTheme.titleLarge),
             ],
           ),
         ),
         IconButton(tooltip: label, onPressed: state.cycleTheme, icon: Icon(icon)),
-        PopupMenuButton<String>(
-          tooltip: 'Account',
-          onSelected: (v) {
-            if (v == 'out') state.signOut();
-            if (v == 'refresh') state.refresh();
-            if (v == 'reminders') showRemindersSheet(context, state);
-            if (v == 'about') {
-              showLicensePage(
-                context: context,
-                applicationName: 'Savanna Grass',
-                applicationLegalese: 'Companion to SavannaTime. MIT licensed.\n'
-                    'Twiga runs on this device; your screen time never leaves it for the AI.',
-              );
-            }
-          },
-          itemBuilder: (_) => [
-            PopupMenuItem(enabled: false, child: Text(state.email ?? '')),
-            const PopupMenuItem(value: 'refresh', child: Text('Refresh')),
-            if (state.reminders.supported) const PopupMenuItem(value: 'reminders', child: Text('Reminders')),
-            const PopupMenuItem(value: 'about', child: Text('About & licences')),
-            const PopupMenuItem(value: 'out', child: Text('Sign out')),
-          ],
-          child: CircleAvatar(
-            radius: 18,
-            backgroundColor: t.colorScheme.primaryContainer,
-            foregroundColor: t.colorScheme.onPrimaryContainer,
-            child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Semantics(
+          button: true,
+          label: 'Profile',
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => ProfileScreen.open(context, state),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: t.colorScheme.primaryContainer,
+              foregroundColor: t.colorScheme.onPrimaryContainer,
+              child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
           ),
         ),
       ],
