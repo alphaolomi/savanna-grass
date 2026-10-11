@@ -21,6 +21,15 @@ class FakeServer {
   final entries = <String, Map<String, dynamic>>{};
   final summaryDates = <String>[];
   bool offline = false;
+  final user = <String, dynamic>{
+    'id': '00000000-0000-0000-0000-000000000001',
+    'email': 'a@b.co',
+    'name': null,
+    'timezone': 'Africa/Nairobi',
+    'role': 'developer',
+    'createdAt': '2026-08-01T09:00:00.000Z',
+    'lastLoginAt': null,
+  };
 
   /// When set, every request waits for it — a slow network.
   Completer<void>? gate;
@@ -46,6 +55,12 @@ class FakeServer {
       return _json({'entries': entries.values.toList()});
     }
     if (path.endsWith('auth/logout')) return _json({});
+    if (path.endsWith('/me/name')) {
+      final name = ((jsonDecode(req.body) as Map)['name'] as String).trim();
+      user['name'] = name.isEmpty ? null : name;
+      return _json({'user': user});
+    }
+    if (path.endsWith('/me')) return _json({'user': user});
     return http.Response('not found', 404);
   });
 
@@ -270,4 +285,44 @@ void main() {
     });
   });
 
+  group('profile', () {
+    test('loads with the session and is forgotten on sign-out', () async {
+      final app = newApp();
+      await app.restore();
+      await settle();
+      expect(app.profile?.roleLabel, 'Developer');
+      expect(app.profile?.name, isNull);
+
+      await app.setName('  Amani Mollel ');
+      expect(app.profile?.name, 'Amani Mollel');
+      expect(server.user['name'], 'Amani Mollel');
+
+      await app.signOut();
+      expect(app.profile, isNull);
+    });
+
+    test("a profile answering after sign-out is not kept", () async {
+      final app = newApp();
+      await app.restore();
+      await settle();
+      app.profile = null;
+      server.gate = Completer();
+      final slow = app.loadProfile();
+      await settle();
+      final out = app.signOut();
+      server.gate!.complete();
+      server.gate = null;
+      await Future.wait([slow, out]);
+      expect(app.profile, isNull);
+    });
+
+    test('offline, the page says so instead of failing', () async {
+      final app = newApp();
+      server.offline = true;
+      await app.restore();
+      await settle();
+      expect(app.profile, isNull);
+      expect(app.profileError, contains('offline'));
+    });
+  });
 }

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../domain/local_day.dart';
 import '../domain/outdoor_log.dart';
+import '../domain/profile.dart';
 import '../domain/screen_day.dart';
 
 /// Every time entry this app writes starts with this, so outdoor time is
@@ -108,6 +109,18 @@ class SavannaApi {
   }
 
   Future<void> logout() => _send('POST', 'auth/logout');
+
+  /// The account behind the token (SavannaTime `GET /me`).
+  Future<Profile> me() async {
+    final json = await _send('GET', 'me');
+    return Profile.fromJson(json['user'] as Map<String, dynamic>);
+  }
+
+  /// Sets the display name; an empty or blank name clears it.
+  Future<Profile> setName(String name) async {
+    final json = await _send('PUT', 'me/name', body: {'name': name});
+    return Profile.fromJson(json['user'] as Map<String, dynamic>);
+  }
 
   /// One local day's screen time. `from`/`to` are *local* calendar dates; the
   /// server buckets them in the user's SavannaTime timezone.

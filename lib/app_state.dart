@@ -12,6 +12,7 @@ import 'domain/active_break.dart';
 import 'domain/grass_debt.dart';
 import 'domain/local_day.dart';
 import 'domain/outdoor_log.dart';
+import 'domain/profile.dart';
 import 'domain/quest.dart';
 import 'domain/reminder_plan.dart';
 import 'domain/screen_day.dart';
@@ -69,6 +70,10 @@ class AppState extends ChangeNotifier {
 
   AuthStatus auth = AuthStatus.unknown;
   String? email;
+
+  /// The SavannaTime account, once `GET /me` has answered this session.
+  Profile? profile;
+  String? profileError;
   ThemeMode themeMode = ThemeMode.system;
   ReminderSettings reminderSettings = const ReminderSettings();
 
@@ -183,6 +188,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _startTicker();
     await _refreshTokenIfNeeded();
+    unawaited(loadProfile());
     await refresh();
   }
 
@@ -268,6 +274,12 @@ class AppState extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Account
 
+  void setThemeMode(ThemeMode m) {
+    themeMode = m;
+    unawaited(storage.writeThemeMode(m));
+    notifyListeners();
+  }
+
   void cycleTheme() {
     themeMode = switch (themeMode) {
       ThemeMode.system => ThemeMode.light,
@@ -288,6 +300,7 @@ class AppState extends ChangeNotifier {
     auth = AuthStatus.signedIn;
     notifyListeners();
     _startTicker();
+    unawaited(loadProfile());
     await refresh();
   }
 
@@ -309,12 +322,48 @@ class AppState extends ChangeNotifier {
     pending = [];
     quest = null;
     activeBreak = null;
+    profile = null;
+    profileError = null;
     loadedAt = null;
     loadError = null;
     loading = false;
     notifyListeners();
     await _quietly(reminders.clearBreak());
     await _syncReminders(force: true);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Profile
+
+  Future<void> loadProfile() async {
+    if (auth != AuthStatus.signedIn) return;
+    final session = _session;
+    try {
+      final p = await api.me();
+      if (session != _session) return;
+      profile = p;
+      email = p.email;
+      profileError = null;
+    } on ApiException catch (e) {
+      if (session != _session) return;
+      // A 401 is handled by refresh(), which signs out; here it is just stale.
+      profileError = e.message;
+    } catch (_) {
+      if (session != _session) return;
+      profileError = "You're offline — your profile will load when you're back online.";
+    }
+    notifyListeners();
+  }
+
+  /// Sets the display name on the SavannaTime account. Throws [ApiException]
+  /// or a network error for the caller to show; nothing is changed locally
+  /// unless the server accepted it.
+  Future<void> setName(String name) async {
+    final session = _session;
+    final p = await api.setName(name.trim());
+    if (session != _session) return;
+    profile = p;
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
