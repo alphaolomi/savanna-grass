@@ -18,6 +18,10 @@ import 'package:savanna_grass/storage.dart';
 /// the time entries it has been sent.
 class FakeServer {
   final screenSeconds = <String, int>{};
+
+  /// Of [screenSeconds], how much was very distracting (-2), per date.
+  final distractingSeconds = <String, int>{};
+  final timelineDates = <String>[];
   final entries = <String, Map<String, dynamic>>{};
   final summaryDates = <String>[];
   bool offline = false;
@@ -43,7 +47,39 @@ class FakeServer {
       final d = req.url.queryParameters['from']!;
       summaryDates.add(d);
       return _json({
-        'summary': {'totalSeconds': screenSeconds[d] ?? 0, 'secondsByLevel': {}, 'pulse': null, 'topApps': []},
+        'summary': {
+          'totalSeconds': screenSeconds[d] ?? 0,
+          'secondsByLevel': {'-2': distractingSeconds[d] ?? 0},
+          'pulse': null,
+          'topApps': [],
+        },
+      });
+    }
+    if (path.endsWith('stats/daily')) {
+      // Like the server: only days with something tracked get a row.
+      final from = DateTime.parse(req.url.queryParameters['from']!);
+      final to = DateTime.parse(req.url.queryParameters['to']!);
+      return _json({
+        'days': [
+          for (var d = from; !d.isAfter(to); d = DateTime(d.year, d.month, d.day + 1))
+            if ((screenSeconds[_key(d)] ?? 0) > 0)
+              {
+                'date': _key(d),
+                'total': screenSeconds[_key(d)],
+                'secondsByLevel': {'-2': distractingSeconds[_key(d)] ?? 0},
+              },
+        ],
+      });
+    }
+    if (path.endsWith('stats/timeline')) {
+      final d = req.url.queryParameters['from']!;
+      timelineDates.add(d);
+      // All of the day's screen time lands in 09:00.
+      return _json({
+        'hours': [
+          for (var h = 0; h < 24; h++)
+            {'hour': h, 'totalSeconds': h == 9 ? screenSeconds[d] ?? 0 : 0, 'secondsByLevel': {}},
+        ],
       });
     }
     if (path.endsWith('time-entries') && req.method == 'POST') {
@@ -63,6 +99,9 @@ class FakeServer {
     if (path.endsWith('/me')) return _json({'user': user});
     return http.Response('not found', 404);
   });
+
+  static String _key(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   // Bytes, not a String: http.Response encodes a String body as Latin-1 when
   // no charset is given, and the 🌿 marker is not Latin-1.
@@ -323,6 +362,115 @@ void main() {
       await settle();
       expect(app.profile, isNull);
       expect(app.profileError, contains('offline'));
+    });
+  });
+
+  group('history', () {
+    test('the week arrives with every refresh, quiet days included', () async {
+      server
+        ..screenSeconds['2026-10-09'] = 2 * 3600
+        ..distractingSeconds['2026-10-09'] = 3600;
+      final app = newApp();
+      await app.restore();
+      final week = app.weekDays;
+      expect(week.map((r) => r.day.day), [5, 6, 7, 8, 9, 10, 11]);
+      final thu = week[4];
+      expect((thu.screenKnown, thu.screenSeconds, thu.debt.owedMinutes), (true, 7200, 25));
+      expect((week[3].screenKnown, week[3].screenSeconds), (true, 0));
+      expect(week.last.screenSeconds, 3 * 3600, reason: 'today comes from the live summary');
+    });
+
+    test('the week is kept for an offline launch', () async {
+      server.screenSeconds['2026-10-09'] = 3600;
+      await newApp().restore();
+      await settle();
+      server.offline = true;
+      final offline = newApp();
+      await offline.restore();
+      expect(offline.weekDays[4].screenSeconds, 3600);
+    });
+
+    test('a past day is read once; pull-to-refresh reads it again', () async {
+      server.screenSeconds['2026-10-09'] = 3600;
+      final app = newApp();
+      await app.restore();
+      final thu = DateTime(2026, 10, 9);
+
+      await app.loadDetail(thu);
+      expect(app.detailFor(thu).data?.hours[9].totalSeconds, 3600);
+      await app.loadDetail(thu);
+      expect(server.timelineDates.where((d) => d == '2026-10-09'), hasLength(1));
+
+      server.screenSeconds['2026-10-09'] = 4000;
+      await app.loadDetail(thu, force: true);
+      expect(server.timelineDates.where((d) => d == '2026-10-09'), hasLength(2));
+      expect(app.recordFor(thu).screenSeconds, 4000, reason: 'the fresher detail beats the daily row');
+    });
+
+    test("today's detail goes stale, and its fresh read updates the hero", () async {
+      final app = newApp();
+      await app.restore();
+      final today = DateTime(2026, 10, 11);
+      await app.loadDetail(today);
+      server.screenSeconds['2026-10-11'] = 4 * 3600;
+      await app.loadDetail(today);
+      expect(app.day.totalSeconds, 3 * 3600, reason: 'still fresh: not read again');
+
+      clock = clock.add(const Duration(seconds: 61));
+      await app.loadDetail(today);
+      expect(app.detailFor(today).data?.screen.totalSeconds, 4 * 3600);
+      expect(app.day.totalSeconds, 4 * 3600);
+    });
+
+    test('offline, a detail keeps what it had and says why', () async {
+      final app = newApp();
+      await app.restore();
+      final thu = DateTime(2026, 10, 9);
+      await app.loadDetail(thu);
+      server.offline = true;
+      await app.loadDetail(thu, force: true);
+      final d = app.detailFor(thu);
+      expect(d.hasData, isTrue);
+      expect(d.error, contains('offline'));
+    });
+
+    test("midnight drops the finished day's partial detail", () async {
+      final app = newApp();
+      await app.restore();
+      await app.loadDetail(DateTime(2026, 10, 11));
+      clock = DateTime(2026, 10, 12, 0, 1);
+      app.checkDay();
+      expect(app.detailFor(DateTime(2026, 10, 11)).hasData, isFalse);
+      await settle();
+    });
+
+    test('sign-out forgets the history, and a late detail is not kept', () async {
+      final app = newApp();
+      await app.restore();
+      server.gate = Completer();
+      final slow = app.loadDetail(DateTime(2026, 10, 9));
+      await settle();
+      final out = app.signOut();
+      server.gate!.complete();
+      server.gate = null;
+      await Future.wait([slow, out]);
+      expect(app.detailFor(DateTime(2026, 10, 9)).hasData, isFalse);
+      expect(app.weekDays.every((r) => !r.screenKnown || r.day == app.today), isTrue);
+    });
+
+    test('a break can be found by id whether queued or synced', () async {
+      final app = newApp();
+      await app.restore();
+      server.offline = true;
+      await app.startBreak(quest);
+      final id = app.activeBreak!.id;
+      clock = clock.add(const Duration(minutes: 5));
+      await app.finishBreak();
+      expect(app.breakById(id)?.pending, isTrue);
+      server.offline = false;
+      await app.refresh();
+      await settle();
+      expect(app.breakById(id)?.pending, isFalse);
     });
   });
 }

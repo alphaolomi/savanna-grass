@@ -3,6 +3,7 @@ import 'local_day.dart';
 /// A break spent outside, as logged to SavannaTime (or still queued locally).
 class LoggedBreak {
   const LoggedBreak({
+    this.id,
     required this.start,
     required this.end,
     required this.title,
@@ -10,6 +11,10 @@ class LoggedBreak {
     this.pending = false,
   });
 
+  /// The time entry's id: client-generated, so the same id whether the break
+  /// is still queued or already on the server. Null in caches written
+  /// before it was kept.
+  final String? id;
   final DateTime start;
   final DateTime end;
   final String title;
@@ -26,6 +31,7 @@ class LoggedBreak {
   int secondsOn(DateTime day) => overlapSeconds(start, end, day);
 
   Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
         'start': start.toUtc().toIso8601String(),
         'end': end.toUtc().toIso8601String(),
         'title': title,
@@ -33,6 +39,7 @@ class LoggedBreak {
       };
 
   factory LoggedBreak.fromJson(Map<String, dynamic> j) => LoggedBreak(
+        id: j['id'] as String?,
         start: DateTime.parse(j['start'] as String).toLocal(),
         end: DateTime.parse(j['end'] as String).toLocal(),
         title: j['title'] as String,

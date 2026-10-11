@@ -9,7 +9,9 @@ import 'ai/gemma_runtime.dart';
 import 'ai/quest_writer.dart';
 import 'api/savanna_api.dart';
 import 'domain/active_break.dart';
+import 'domain/day_record.dart';
 import 'domain/grass_debt.dart';
+import 'domain/loadable.dart';
 import 'domain/local_day.dart';
 import 'domain/outdoor_log.dart';
 import 'domain/profile.dart';
@@ -83,6 +85,14 @@ class AppState extends ChangeNotifier {
 
   ScreenDay day = ScreenDay.empty;
   List<LoggedBreak> _serverBreaks = [];
+
+  /// The last seven days' totals from `/stats/daily`, read with every
+  /// refresh; null until the first read (or a cached copy) arrives.
+  List<DayTotals>? _weekTotals;
+
+  /// Detail pages' data, by `yyyy-mm-dd`: each day's full summary and its 24
+  /// hours, loaded when a page asks for it.
+  final Map<String, Loadable<DayDetail>> _details = {};
   List<OutdoorBreak> pending = [];
   bool loading = false;
   String? loadError;
@@ -124,7 +134,7 @@ class AppState extends ChangeNotifier {
   List<LoggedBreak> get breaks => [
         ..._serverBreaks,
         for (final b in pending)
-          LoggedBreak(start: b.start, end: b.end, title: b.title, note: b.note, pending: true),
+          LoggedBreak(id: b.id, start: b.start, end: b.end, title: b.title, note: b.note, pending: true),
       ]..sort((a, b) => b.start.compareTo(a.start));
 
   /// Breaks with any time on [today], including one that began last night.
@@ -135,6 +145,38 @@ class AppState extends ChangeNotifier {
   GrassDebt get debt => GrassDebt.compute(day, outdoorSeconds: outdoorSeconds);
 
   OutdoorWeek get week => OutdoorWeek.from(breaks, _today);
+
+  /// The last seven days, oldest first, each with its screen time, time
+  /// outside, breaks and debt.
+  List<DayRecord> get weekDays => buildWeek(
+        today: _today,
+        breaks: breaks,
+        todayScreen: loadedAt == null ? null : day,
+        weekTotals: _weekTotals,
+        detailFor: (d) => _details[dateKey(d)]?.data,
+      );
+
+  /// One day's record from the best numbers the app has for it.
+  DayRecord recordFor(DateTime d) => recordForDay(
+        day: d,
+        today: _today,
+        breaks: breaks,
+        todayScreen: loadedAt == null ? null : day,
+        detail: _details[dateKey(d)]?.data,
+        weekTotals: _weekTotals,
+      );
+
+  /// A day's detail as its page should show it.
+  Loadable<DayDetail> detailFor(DateTime d) => _details[dateKey(d)] ?? const Loadable();
+
+  /// The breaks [id] belongs to, wherever it is now — queued, or synced since
+  /// the page showing it was opened.
+  LoggedBreak? breakById(String id) {
+    for (final b in breaks) {
+      if (b.id == id) return b;
+    }
+    return null;
+  }
 
   // ---------------------------------------------------------------------------
   // Start-up and lifecycle
@@ -166,6 +208,7 @@ class AppState extends ChangeNotifier {
     final snap = await storage.readSnapshot();
     if (snap != null) {
       _serverBreaks = snap.breaks;
+      _weekTotals = snap.weekTotals;
       // Yesterday's screen time owes nothing today.
       if (snap.date == dateKey(_today)) {
         day = snap.day;
@@ -226,6 +269,9 @@ class AppState extends ChangeNotifier {
   bool checkDay() {
     final d = localDay(now);
     if (d == _today) return false;
+    // The day that just ended was read while it was still going; its detail
+    // is missing its last minutes, so it is read again when next opened.
+    _details.remove(dateKey(_today));
     _today = d;
     // Yesterday's screen time owes nothing today. The breaks stay: the week
     // needs them, and today's share of one across midnight still counts.
@@ -319,6 +365,8 @@ class AppState extends ChangeNotifier {
     email = null;
     day = ScreenDay.empty;
     _serverBreaks = [];
+    _weekTotals = null;
+    _details.clear();
     pending = [];
     quest = null;
     activeBreak = null;
@@ -405,6 +453,7 @@ class AppState extends ChangeNotifier {
       final results = await Future.wait([
         api.today(forDay),
         api.outdoorBreaks(addDays(forDay, -6), forDay),
+        api.daily(addDays(forDay, -6), forDay),
       ]);
       if (session != _session) return;
       if (forDay != _today) {
@@ -415,12 +464,14 @@ class AppState extends ChangeNotifier {
       }
       day = results[0] as ScreenDay;
       _serverBreaks = results[1] as List<LoggedBreak>;
+      _weekTotals = results[2] as List<DayTotals>;
       loadedAt = now;
       loadError = null;
       unawaited(_quietly(storage.writeSnapshot(Snapshot(
         date: dateKey(forDay),
         day: day,
         breaks: _serverBreaks,
+        weekTotals: _weekTotals,
         loadedAt: loadedAt!,
       ))));
     } on ApiException catch (e) {
@@ -443,6 +494,53 @@ class AppState extends ChangeNotifier {
         unawaited(_syncReminders());
       }
     }
+  }
+
+  /// Reads [day]'s full summary and its 24 hours for its detail page.
+  ///
+  /// A past day is read once a session — only a late desktop sync moves it —
+  /// unless [force]d by a pull-to-refresh. Today goes stale like the hero's
+  /// numbers, and a fresh read of today updates the hero too, so the two
+  /// never show different totals.
+  Future<void> loadDetail(DateTime day, {bool force = false}) async {
+    if (auth != AuthStatus.signedIn) return;
+    final d = localDay(day);
+    final key = dateKey(d);
+    final current = _details[key] ?? const Loadable<DayDetail>();
+    if (current.loading) return;
+    final isToday = d == _today;
+    if (!force && current.hasData && !(isToday && current.isStale(now, staleOnResume))) return;
+
+    final session = _session;
+    _details[key] = current.started();
+    notifyListeners();
+    try {
+      final r = await Future.wait([api.today(d), api.timeline(d)]);
+      if (session != _session) return;
+      if (isToday && d != _today) {
+        // Midnight passed mid-read: a partial day. Read it again when opened.
+        _details.remove(key);
+        notifyListeners();
+        return;
+      }
+      final detail = DayDetail(screen: r[0] as ScreenDay, hours: r[1] as List<HourSlice>);
+      _details[key] = current.succeeded(detail, now);
+      if (isToday) {
+        this.day = detail.screen;
+        loadedAt = now;
+      }
+    } on ApiException catch (e) {
+      if (session != _session) return;
+      if (e.isUnauthorized) {
+        await signOut();
+        return;
+      }
+      _details[key] = current.failed(e.message);
+    } catch (_) {
+      if (session != _session) return;
+      _details[key] = current.failed("You're offline — pull down to try again.");
+    }
+    notifyListeners();
   }
 
   // ---------------------------------------------------------------------------
@@ -650,7 +748,7 @@ class AppState extends ChangeNotifier {
       // not dip while the follow-up refresh is in flight.
       _serverBreaks = [
         ..._serverBreaks,
-        for (final b in sent) LoggedBreak(start: b.start, end: b.end, title: b.title, note: b.note),
+        for (final b in sent) LoggedBreak(id: b.id, start: b.start, end: b.end, title: b.title, note: b.note),
       ];
       await storage.writePending(pending);
       notifyListeners();

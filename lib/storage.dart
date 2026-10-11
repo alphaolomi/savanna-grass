@@ -111,7 +111,13 @@ class Storage {
 /// The last numbers the server gave, kept so a launch with no signal shows
 /// them instead of zeros. [day] only counts for the local date it was read on.
 class Snapshot {
-  const Snapshot({required this.date, required this.day, required this.breaks, required this.loadedAt});
+  const Snapshot({
+    required this.date,
+    required this.day,
+    required this.breaks,
+    required this.loadedAt,
+    this.weekTotals,
+  });
 
   /// `yyyy-mm-dd` of the local day [day] belongs to.
   final String date;
@@ -119,11 +125,15 @@ class Snapshot {
   final List<LoggedBreak> breaks;
   final DateTime loadedAt;
 
+  /// The week's per-day totals; absent in caches from before 1.2.
+  final List<DayTotals>? weekTotals;
+
   Map<String, dynamic> toJson() => {
         'date': date,
         'day': day.toSummaryJson(),
         'breaks': [for (final b in breaks) b.toJson()],
         'loadedAt': loadedAt.toUtc().toIso8601String(),
+        if (weekTotals != null) 'weekTotals': [for (final d in weekTotals!) d.toJson()],
       };
 
   factory Snapshot.fromJson(Map<String, dynamic> j) => Snapshot(
@@ -131,6 +141,7 @@ class Snapshot {
         day: ScreenDay.fromSummaryJson(j['day'] as Map<String, dynamic>),
         breaks: (j['breaks'] as List).cast<Map<String, dynamic>>().map(LoggedBreak.fromJson).toList(),
         loadedAt: DateTime.parse(j['loadedAt'] as String).toLocal(),
+        weekTotals: (j['weekTotals'] as List?)?.cast<Map<String, dynamic>>().map(DayTotals.fromJson).toList(),
       );
 }
 

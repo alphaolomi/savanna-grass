@@ -137,4 +137,41 @@ void main() {
     expect(secondsUntilExpiry(jwt, now), 3600);
     expect(secondsUntilExpiry('garbage', now), isNull);
   });
+
+  test('daily and timeline ask for local dates and fill a whole day', () async {
+    final urls = <String>[];
+    final api = SavannaApi(
+      baseUrl: 'https://api.example.com',
+      client: MockClient((req) async {
+        urls.add(req.url.toString());
+        if (req.url.path.endsWith('daily')) {
+          return http.Response(
+            jsonEncode({
+              'days': [
+                {'date': '2026-10-09', 'total': 3600, 'pulse': 50, 'uncategorized': 0, 'secondsByLevel': {'-1': 600}},
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'hours': [
+              {'hour': 9, 'totalSeconds': 1200, 'scoredSeconds': 1200, 'uncategorizedSeconds': 0, 'pulse': 75, 'secondsByLevel': {'1': 1200}},
+            ],
+          }),
+          200,
+        );
+      }),
+    );
+    final days = await api.daily(DateTime(2026, 10, 5), DateTime(2026, 10, 11));
+    final hours = await api.timeline(DateTime(2026, 10, 9, 15));
+    expect(urls, [
+      'https://api.example.com/api/v1/stats/daily?from=2026-10-05&to=2026-10-11',
+      'https://api.example.com/api/v1/stats/timeline?from=2026-10-09&to=2026-10-09',
+    ]);
+    expect(days.single.distractingSeconds, 600);
+    expect(hours, hasLength(24));
+    expect(hours[9].productiveSeconds, 1200);
+  });
 }

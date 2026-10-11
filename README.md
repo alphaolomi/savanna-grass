@@ -102,13 +102,16 @@ lib/
   domain/local_day.dart    local-midnight days; a break across midnight pays both
   domain/active_break.dart the running break, saved so it survives Android killing the app
   domain/reminder_plan.dart which daily nudges to book, from the last known debt (pure, tested)
+  domain/day_record.dart   one day's screen time, time outside, breaks and debt; the week (pure, tested)
+  domain/loadable.dart     data + loading + error + age, for anything a page fetches
   domain/profile.dart      the SavannaTime account (GET /me) and the time-zone mismatch check
   persona.dart             Twiga's name and voice
   ai/gemma_runtime.dart    download / activate / generate with flutter_gemma (GPU → CPU)
   ai/web_llm.dart          browser engine: one MediaPipe instance, weights streamed from cache
   ai/quest_writer.dart     model-first, classic-quest fallback writer
   api/savanna_api.dart     SavannaTime /api/v1 client (login, profile, stats, time entries)
-  app_state.dart           one ChangeNotifier: day rollover, foreground/background, offline queue
+  app_state.dart           one ChangeNotifier: day rollover, foreground/background, offline queue,
+                           the week's history and per-day detail cache
   reminders.dart           break timer, quest-time alarm and daily nudge (local notifications)
   ui/                      login, home (debt hero, Twiga, week, today), break timer, profile, reminders, theme
 demo/                      reproducible demo video: seed → record → narrate → edit
