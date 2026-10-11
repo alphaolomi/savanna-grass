@@ -7,7 +7,9 @@ import '../domain/local_day.dart';
 import '../domain/profile.dart';
 import '../persona.dart';
 import 'reminders_sheet.dart';
+import 'signed_in_page.dart';
 import 'theme.dart';
+import 'week_screen.dart';
 import 'widgets.dart';
 
 /// The person's own page: their SavannaTime account, their week outside, and
@@ -25,7 +27,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool _leaving = false;
 
   @override
   void initState() {
@@ -34,23 +35,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     widget.state.loadProfile();
   }
 
-  /// This page sits on top of the home screen. If the session ends while it
-  /// is open — signed out here, or a 401 on a background refresh — it must
-  /// not linger over the login screen.
-  void _leaveIfSignedOut() {
-    if (_leaving || widget.state.auth == AuthStatus.signedIn) return;
-    _leaving = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Navigator.of(context).popUntil((r) => r.isFirst);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: widget.state,
-      builder: (context, _) {
-        _leaveIfSignedOut();
+    return SignedInPage(
+      state: widget.state,
+      builder: (context) {
         final state = widget.state;
         return Scaffold(
           appBar: AppBar(title: const Text('Profile')),
@@ -184,7 +173,13 @@ class _WeekStats extends StatelessWidget {
   final AppState state;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => WeekScreen.open(context, state),
+        child: _stats(context),
+      );
+
+  Widget _stats(BuildContext context) {
     final week = state.week;
     final weekStart = addDays(state.today, -6);
     final breaks = state.breaks.where((b) => !b.end.isBefore(weekStart)).length;
