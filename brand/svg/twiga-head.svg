@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024"><g transform="translate(512 600) scale(1.5) translate(-580 -430)">
+  <g id="twiga">
+    <!-- neck -->
+    <path d="M 352 1024 C 372 820 404 640 462 418 L 558 444 C 508 640 482 820 470 1024 Z" fill="#F7F1DE"/>
+    <!-- mane -->
+    <path d="M 352 1024 C 372 820 404 640 462 418 L 440 412 C 382 640 350 820 330 1024 Z" fill="#D9A441"/>
+    <!-- spots -->
+    <g fill="#D9A441">
+      <rect x="436" y="560" width="56" height="44" rx="16" transform="rotate(-8 464 582)"/>
+      <rect x="412" y="660" width="62" height="50" rx="18" transform="rotate(6 443 685)"/>
+      <rect x="402" y="770" width="58" height="52" rx="18" transform="rotate(-4 431 796)"/>
+      <rect x="388" y="880" width="64" height="56" rx="20" transform="rotate(5 420 908)"/>
+    </g>
+    <!-- ossicones -->
+    <g stroke="#F7F1DE" stroke-width="22" stroke-linecap="round">
+      <line x1="502" y1="352" x2="480" y2="262"/>
+      <line x1="548" y1="344" x2="546" y2="252"/>
+    </g>
+    <circle cx="478" cy="254" r="22" fill="#D9A441"/>
+    <circle cx="546" cy="244" r="22" fill="#D9A441"/>
+    <!-- ear -->
+    <ellipse cx="466" cy="374" rx="50" ry="21" fill="#F7F1DE" transform="rotate(-24 466 374)"/>
+    <!-- head -->
+    <path d="M 456 412 C 452 354 520 328 592 340 C 652 350 702 388 718 428 C 730 460 708 486 674 486 C 632 484 600 468 560 462 C 502 456 458 450 456 412 Z" fill="#F7F1DE"/>
+    <!-- muzzle -->
+    <path d="M 662 380 C 696 400 722 430 718 456 C 712 480 690 488 664 486 C 652 452 652 416 662 380 Z" fill="#EADFC2"/>
+    <ellipse cx="700" cy="450" rx="7" ry="5" fill="#163A30" opacity="0.55"/>
+    <!-- eye -->
+    <circle cx="574" cy="386" r="15" fill="#163A30"/>
+    <circle cx="579" cy="381" r="5" fill="#F7F1DE"/>
+  </g>
+</g></svg>

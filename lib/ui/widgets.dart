@@ -1,21 +1,54 @@
 import 'package:flutter/material.dart';
 
 import '../persona.dart';
+import 'theme.dart';
 
-/// Twiga's face: the giraffe on a soft green disc.
+/// Twiga's face: the brand giraffe on the brand green, as on the app icon.
 class TwigaAvatar extends StatelessWidget {
   const TwigaAvatar({super.key, this.size = 40});
   final double size;
 
   @override
   Widget build(BuildContext context) {
-    final c = Theme.of(context).colorScheme;
+    final s = Savanna.of(context);
     return Container(
       width: size,
       height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: c.primaryContainer, shape: BoxShape.circle),
-      child: Text(Twiga.emoji, style: TextStyle(fontSize: size * 0.52, height: 1)),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [s.heroTop, s.heroBottom],
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset(
+        'assets/brand/twiga.png',
+        fit: BoxFit.cover,
+        filterQuality: FilterQuality.medium,
+        semanticLabel: Twiga.name,
+      ),
+    );
+  }
+}
+
+/// The Savanna Grass app mark (the launcher icon), for headers.
+class BrandMark extends StatelessWidget {
+  const BrandMark({super.key, this.size = 36});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.226),
+      child: Image.asset(
+        'assets/brand/logo.png',
+        width: size,
+        height: size,
+        filterQuality: FilterQuality.medium,
+        excludeFromSemantics: true,
+      ),
     );
   }
 }

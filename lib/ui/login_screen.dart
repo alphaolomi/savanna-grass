@@ -74,7 +74,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const TwigaAvatar(size: 52),
+                        const BrandMark(size: 60),
                         const SizedBox(height: 14),
                         Text('Savanna Grass', style: t.textTheme.headlineSmall?.copyWith(color: s.onHero)),
                         const SizedBox(height: 4),

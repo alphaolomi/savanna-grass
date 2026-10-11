@@ -64,7 +64,7 @@ main > section { max-width: 1080px; margin: 0 auto; padding: 56px 20px; }
   border-bottom: 1px solid var(--line);
 }
 .brand { font-weight: 800; color: var(--ink); text-decoration: none; display: flex; gap: 8px; align-items: center; }
-.brand-mark { font-size: 1.3rem; }
+.brand-mark { width: 32px; height: 32px; border-radius: 8px; }
 .nav nav { display: flex; gap: clamp(10px, 2.5vw, 24px); }
 .nav nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
 .nav nav a:hover { color: var(--ink); }

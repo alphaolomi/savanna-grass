@@ -52,3 +52,4 @@ demo/node_modules/
 
 # MediaPipe GenAI runtime, vendored by tool/vendor_mediapipe.sh
 web/mediapipe/
+brand/preview*.png

@@ -6,7 +6,6 @@
 /// see lib/ai/gemma_runtime.dart.)
 abstract final class Twiga {
   static const name = 'Twiga';
-  static const emoji = '🦒';
   static const tagline = 'your outdoor guide';
 
   static const thinking = [

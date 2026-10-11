@@ -62,7 +62,7 @@ class _BreakScreenState extends State<BreakScreen> {
     Navigator.of(context).pop();
     messenger.showSnackBar(SnackBar(
       content: Text(synced
-          ? 'Logged to SavannaTime: $minutes min outside. ${Twiga.emoji} Twiga is proud of you.'
+          ? 'Logged to SavannaTime: $minutes min outside. ${Twiga.name} is proud of you.'
           : 'Saved on this device — it counts already and will sync when you are online.'),
     ));
   }

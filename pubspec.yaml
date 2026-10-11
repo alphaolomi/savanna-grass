@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.11.4
@@ -49,6 +49,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.7
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -60,6 +62,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Brand marks drawn in brand/ (make_svgs.py → render.mjs).
+  assets:
+    - assets/brand/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -91,3 +97,37 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# App icons for every platform, from the brand/ artwork:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: "ic_launcher"
+  image_path: "brand/png/icon-rounded-1024.png"
+  min_sdk_android: 24
+  adaptive_icon_background: "brand/png/adaptive-background-1024.png"
+  adaptive_icon_foreground: "brand/png/adaptive-foreground-1024.png"
+  adaptive_icon_monochrome: "brand/png/adaptive-monochrome-1024.png"
+  # The artwork is already scaled into the safe zone (brand/make_svgs.py).
+  adaptive_icon_foreground_inset: 0
+  ios: true
+  image_path_ios: "brand/png/icon-square-1024.png"
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "brand/png/icon-rounded-1024.png"
+    background_color: "#2F6F5E"
+    theme_color: "#2F6F5E"
+
+# Launch screen in SavannaTime's neutrals, light and dark:
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#F2F2F0"
+  color_dark: "#141413"
+  image: "brand/png/icon-rounded-512.png"
+  android_12:
+    image: "brand/png/adaptive-foreground-1024.png"
+    icon_background_color: "#2F6F5E"
+    color: "#F2F2F0"
+    color_dark: "#141413"
+  web: true
+  ios: true

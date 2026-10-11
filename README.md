@@ -1,6 +1,8 @@
-# 🌿 Savanna Grass
+# Savanna Grass
 
-**Your screen time, turned into reasons to go outside — planned by Twiga 🦒, an open-weight model running on your device.**
+<img src="brand/png/icon-rounded-192.png" width="96" align="right" alt="">
+
+**Your screen time, turned into reasons to go outside — planned by Twiga, an open-weight model running on your device.**
 
 Savanna Grass is a Flutter companion to [SavannaTime](https://savannatime.com), the privacy-first
 screen-time tracker. SavannaTime already knows how long you have been on screens today. Savanna
@@ -136,6 +138,20 @@ Chromium with Playwright and captures frames over the DevTools screencast (the b
 are a page-clock time-lapse, labelled as such); narration is [Piper](https://github.com/rhasspy/piper)
 (open-source, offline TTS); `music.py` synthesises the music bed; `edit.py` composes the 1080p cut
 with ffmpeg.
+
+## Brand
+
+One drawing, every surface: Twiga the giraffe rising out of the grass towards the sun, on
+SavannaTime green. `brand/make_svgs.py` writes the SVGs (full icon, Android adaptive background /
+foreground / themed-monochrome layers, Twiga's head for in-app avatars); `brand/render.mjs`
+renders them with Chromium. Icons and launch screens for Android, iOS and web are generated from
+those PNGs:
+
+```bash
+python brand/make_svgs.py && PLAYWRIGHT_DIR=… node brand/render.mjs
+dart run flutter_launcher_icons
+dart run flutter_native_splash:create
+```
 
 ## Releasing
 

@@ -1,10 +1,10 @@
 {
     "name": "Savanna Grass",
-    "short_name": "Grass",
+    "short_name": "Savanna Grass",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#3F7D3A",
-    "theme_color": "#3F7D3A",
+    "background_color": "#2F6F5E",
+    "theme_color": "#2F6F5E",
     "description": "Your screen time, turned into reasons to go outside.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,

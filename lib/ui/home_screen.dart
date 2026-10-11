@@ -85,6 +85,8 @@ class _Header extends StatelessWidget {
     final initial = (state.email ?? '?').substring(0, 1).toUpperCase();
     return Row(
       children: [
+        const BrandMark(size: 38),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,9 +407,18 @@ class _QuestCard extends StatelessWidget {
                     color: t.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    '${Twiga.emoji}  ${quest.why}',
-                    style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onPrimaryContainer),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const TwigaAvatar(size: 22),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          quest.why,
+                          style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onPrimaryContainer),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
