@@ -62,17 +62,20 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+/// The header greeting for [hour], with the person's first name if known.
+/// The name goes inside a question ("Still up, Amani?"), not after it.
+String greeting(int hour, String? name) {
+  final n = (name == null || name.isEmpty) ? '' : ', $name';
+  if (hour < 5) return 'Still up$n?';
+  if (hour < 12) return 'Good morning$n';
+  if (hour < 17) return 'Good afternoon$n';
+  return 'Good evening$n';
+}
+
 class _Header extends StatelessWidget {
   const _Header({required this.state});
   final AppState state;
 
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 5) return 'Still up?';
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +95,7 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(first == null ? _greeting : '$_greeting, $first', style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+              Text(greeting(DateTime.now().hour, first), style: t.textTheme.labelLarge?.copyWith(color: t.colorScheme.onSurfaceVariant)),
               Text('Savanna Grass', style: t.textTheme.titleLarge),
             ],
           ),
