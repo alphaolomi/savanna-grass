@@ -183,7 +183,8 @@ git checkout main && git pull
 flutter build apk --release
 cp build/app/outputs/flutter-apk/app-release.apk savanna-grass.apk
 sha256sum savanna-grass.apk > SHA256SUMS.txt
-gh release create v1.1.0 savanna-grass.apk SHA256SUMS.txt --target main --prerelease   --title "Savanna Grass 1.1.0" --notes-file docs/releases/v1.1.0.md
+gh release create v1.2.0 savanna-grass.apk SHA256SUMS.txt --target main --prerelease \
+  --title "Savanna Grass 1.2.0" --notes-file docs/releases/v1.2.0.md
 ```
 
 ## Licence
